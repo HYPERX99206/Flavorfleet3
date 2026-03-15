@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Your Orders</h1>
+
+{% for o in orders %}
+
+<div class="order">
+
+<p>Order ID : {{o.id}}</p>
+<p>Total : ₹ {{o.total_amount}}</p>
+<p>Status : {{o.status}}</p>
+
+</div>
+
+{% endfor %}
+
+{% endblock %}

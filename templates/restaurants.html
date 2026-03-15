@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="restaurants-page">
+
+<h1>Restaurants Near You</h1>
+
+<div class="restaurant-count">
+Showing <span id="visibleCount">0</span> out of
+<span id="totalCount">{{ restaurants|length }}</span> restaurants
+</div>
+
+
+<!-- SEARCH + SORT + FILTER -->
+
+<div class="search-filter">
+
+<input
+type="text"
+id="searchInput"
+placeholder="Search restaurants..."
+onkeyup="searchRestaurants()"
+>
+
+<select id="sortFilter" onchange="sortRestaurants()">
+
+<option value="">Sort</option>
+<option value="az">A - Z</option>
+<option value="za">Z - A</option>
+<option value="rating">Rating</option>
+
+</select>
+
+<button class="filter-btn" onclick="toggleFilters()">Filters ⚙️</button>
+
+</div>
+
+
+<!-- FILTER PANEL -->
+
+<div id="advancedFilters" class="advanced-filters">
+
+<h2>Filters</h2>
+
+<h3>Cuisine</h3>
+
+<div class="cuisine-tags">
+
+<label><input type="checkbox" value="veg"> Veg</label>
+<label><input type="checkbox" value="nonveg"> Non-Veg</label>
+<label><input type="checkbox" value="italian"> Italian</label>
+<label><input type="checkbox" value="chinese"> Chinese</label>
+<label><input type="checkbox" value="indian"> Indian</label>
+
+</div>
+
+
+<h3>Delivery Time</h3>
+
+<select id="deliveryFilter">
+
+<option value="">Any</option>
+<option value="20">Under 20 mins</option>
+<option value="30">Under 30 mins</option>
+<option value="40">Under 40 mins</option>
+
+</select>
+
+
+<h3>Price</h3>
+
+<input
+type="range"
+min="100"
+max="1000"
+value="1000"
+id="priceSlider"
+oninput="updatePrice()"
+>
+
+<p>Max Price: ₹<span id="priceValue">1000</span></p>
+
+
+<h3>Minimum Rating</h3>
+
+<input
+type="range"
+min="1"
+max="5"
+step="0.1"
+value="1"
+id="ratingSlider"
+oninput="updateRating()"
+>
+
+<p>Rating: <span id="ratingValue">1</span> ⭐</p>
+
+<button onclick="applyFilters()" class="apply-btn">
+Apply Filters
+</button>
+
+</div>
+
+
+<div id="activeFilters"></div>
+
+
+<!-- RESTAURANTS GRID -->
+
+<div class="restaurants" id="restaurantList">
+
+{% for r in restaurants %}
+
+<a href="/restaurant/{{ r.id }}"
+class="card restaurant-card"
+data-name="{{ r.name }}"
+data-rating="{{ r.rating }}"
+data-cuisine="{{ r.cuisine }}"
+data-delivery="{{ r.delivery_time }}"
+data-price="{{ r.price }}">
+
+<img src="/static/images/{{ r.image }}">
+
+<div class="card-body">
+
+<h2>{{ r.name }}</h2>
+
+<p>{{ r.cuisine }}</p>
+
+<div class="meta">
+
+<span>{{ r.rating }} ⭐</span>
+
+<span>🛵 {{ r.delivery_time }} mins</span>
+
+</div>
+
+</div>
+
+</a>
+
+{% endfor %}
+
+</div>
+
+</div>
+
+
+<script>
+
+function toggleFilters(){
+document.getElementById("advancedFilters").classList.toggle("show")
+}
+
+function updatePrice(){
+let price=document.getElementById("priceSlider").value
+document.getElementById("priceValue").innerText=price
+}
+
+function updateRating(){
+let rating=document.getElementById("ratingSlider").value
+document.getElementById("ratingValue").innerText=rating
+}
+
+function filterRestaurants(){
+
+let search=document.getElementById("searchInput").value.toLowerCase()
+let rating=parseFloat(document.getElementById("ratingSlider").value)
+let delivery=parseInt(document.getElementById("deliveryFilter").value || 0)
+let price=parseInt(document.getElementById("priceSlider").value)
+
+let cuisines=[]
+document.querySelectorAll(".cuisine-tags input:checked")
+.forEach(cb=>{
+cuisines.push(cb.value.toLowerCase())
+})
+
+let cards=document.querySelectorAll(".restaurant-card")
+
+cards.forEach(card=>{
+
+let name=card.dataset.name.toLowerCase()
+let rRating=parseFloat(card.dataset.rating || 0)
+let rDelivery=parseInt(card.dataset.delivery || 0)
+let rPrice=parseInt(card.dataset.price || 0)
+let rCuisine=(card.dataset.cuisine || "").toLowerCase()
+
+let show=true
+
+if(!name.includes(search)) show=false
+if(rRating < rating) show=false
+if(delivery && rDelivery > delivery) show=false
+if(rPrice > price) show=false
+
+if(cuisines.length>0){
+let match=cuisines.some(c=>rCuisine.includes(c))
+if(!match) show=false
+}
+
+card.style.display = show ? "" : "none"
+
+})
+
+updateRestaurantCount()
+
+}
+
+function applyFilters(){
+filterRestaurants()
+}
+
+function searchRestaurants(){
+filterRestaurants()
+}
+
+function sortRestaurants(){
+
+let container=document.getElementById("restaurantList")
+let cards=Array.from(container.getElementsByClassName("restaurant-card"))
+
+let filter=document.getElementById("sortFilter").value
+
+if(filter==="az"){
+cards.sort((a,b)=>a.dataset.name.localeCompare(b.dataset.name))
+}
+
+if(filter==="za"){
+cards.sort((a,b)=>b.dataset.name.localeCompare(a.dataset.name))
+}
+
+if(filter==="rating"){
+cards.sort((a,b)=>b.dataset.rating-a.dataset.rating)
+}
+
+cards.forEach(card=>container.appendChild(card))
+
+}
+
+function updateRestaurantCount(){
+
+let cards=document.querySelectorAll(".restaurant-card")
+
+let visible=0
+
+cards.forEach(card=>{
+if(card.style.display!=="none"){
+visible++
+}
+})
+
+document.getElementById("visibleCount").innerText=visible
+
+}
+
+document.addEventListener("DOMContentLoaded",function(){
+
+updateRestaurantCount()
+
+document.querySelectorAll(
+"#deliveryFilter, .cuisine-tags input, #ratingSlider, #priceSlider"
+).forEach(el=>{
+el.addEventListener("change",filterRestaurants)
+})
+
+})
+
+</script>
+
+{% endblock %}

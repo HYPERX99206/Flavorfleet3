@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>FlavorFleet</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+
+<body class="landing-page">
+
+
+<!-- ================= NAVBAR ================= -->
+
+<nav class="navbar">
+
+    <div class="logo">
+        FlavorFleet 🍔
+    </div>
+
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/restaurants">Restaurants</a>
+        <a href="/cart">Cart</a>
+        <a href="/login">Login</a>
+        <a href="/register">Register</a>
+    </div>
+
+</nav>
+
+
+
+<!-- ================= HERO SECTION ================= -->
+
+<section class="hero">
+
+    <div class="hero-content">
+
+        <h1>
+            Delicious Food Delivered Fast 🍕
+        </h1>
+
+        <p>
+            Order from your favourite restaurants
+        </p>
+
+        <a href="/restaurants" class="order-btn">
+            Order Now
+        </a>
+
+    </div>
+
+</section>
+
+
+
+<!-- ================= RESTAURANTS PREVIEW ================= -->
+
+<section class="home-restaurants">
+
+    <h2>Restaurants Around You</h2>
+
+    <div class="restaurant-container">
+
+        {% for r in restaurants %}
+
+        <div class="restaurant-card">
+
+            <img src="{{ r.image }}" class="restaurant-img">
+
+            <div class="restaurant-info">
+
+                <h3>{{ r.name }}</h3>
+
+                <p>{{ r.cuisine }}</p>
+
+                <p>⭐ {{ r.rating }}</p>
+
+                <p>Delivery: {{ r.delivery_time }} mins</p>
+
+                <a href="/menu/{{ r.id }}" class="view-menu-btn">
+                    View Menu
+                </a>
+
+            </div>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+</section>
+
+
+
+<!-- ================= FOOTER ================= -->
+
+<footer class="footer">
+
+    <p>
+        © 2026 FlavorFleet — Food Delivery Made Easy
+    </p>
+
+</footer>
+
+
+</body>
+</html>

@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="dashboard-container">
+
+<div class="dashboard-header">
+
+<h1>{{ restaurant.name }} Dashboard</h1>
+
+<p>Manage your restaurant menu</p>
+
+</div>
+
+
+<div class="dashboard-grid">
+
+<!-- MENU ITEMS -->
+
+<div class="menu-section">
+
+<h2>Menu Items</h2>
+
+<div class="menu-items">
+
+{% for item in menu_items %}
+
+<div class="menu-card">
+
+<img src="/static/images/{{ item.image }}" alt="{{ item.name }}">
+
+<h3>{{ item.name }}</h3>
+
+<p class="price">₹{{ item.price }}</p>
+
+<p class="category">{{ item.category }}</p>
+
+<a
+href="/delete_menu_item/{{ item.id }}/{{ restaurant.id }}"
+class="delete-btn"
+>
+Delete
+</a>
+
+</div>
+
+{% endfor %}
+
+</div>
+
+</div>
+
+
+<!-- ADD ITEM FORM -->
+
+<div class="add-item">
+
+<h2>Add New Item</h2>
+
+<form method="POST" action="/add_menu_item/{{ restaurant.id }}">
+
+<input
+type="text"
+name="name"
+placeholder="Food name"
+required
+>
+
+<input
+type="number"
+name="price"
+placeholder="Price"
+required
+>
+
+<input
+type="text"
+name="category"
+placeholder="Category"
+required
+>
+
+<input
+type="text"
+name="image"
+placeholder="Image filename (example: pizza.jpg)"
+>
+
+<button type="submit">
+Add Item
+</button>
+
+</form>
+
+</div>
+
+</div>
+
+</div>
+
+
+<style>
+
+.dashboard-container{
+
+max-width:1200px;
+margin:auto;
+padding:30px;
+
+}
+
+.dashboard-header{
+
+margin-bottom:30px;
+
+}
+
+.dashboard-header h1{
+
+font-size:32px;
+
+}
+
+.dashboard-header p{
+
+color:gray;
+
+}
+
+.dashboard-grid{
+
+display:grid;
+grid-template-columns:2fr 1fr;
+gap:40px;
+
+}
+
+.menu-items{
+
+display:grid;
+grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+gap:20px;
+
+}
+
+.menu-card{
+
+background:white;
+border-radius:12px;
+padding:15px;
+box-shadow:0 4px 10px rgba(0,0,0,0.1);
+text-align:center;
+transition:0.2s;
+
+}
+
+.menu-card:hover{
+
+transform:translateY(-5px);
+box-shadow:0 10px 20px rgba(0,0,0,0.15);
+
+}
+
+.menu-card img{
+
+width:100%;
+height:120px;
+object-fit:cover;
+border-radius:10px;
+
+}
+
+.menu-card h3{
+
+margin:10px 0 5px;
+
+}
+
+.price{
+
+color:#ff4d4d;
+font-weight:bold;
+
+}
+
+.category{
+
+color:gray;
+font-size:14px;
+
+}
+
+.delete-btn{
+
+display:inline-block;
+margin-top:10px;
+padding:6px 12px;
+background:#ff4d4d;
+color:white;
+border-radius:6px;
+text-decoration:none;
+font-size:14px;
+
+}
+
+.delete-btn:hover{
+
+background:#e60023;
+
+}
+
+.add-item{
+
+background:white;
+padding:20px;
+border-radius:12px;
+box-shadow:0 4px 10px rgba(0,0,0,0.1);
+
+}
+
+.add-item form{
+
+display:flex;
+flex-direction:column;
+gap:12px;
+
+}
+
+.add-item input{
+
+padding:10px;
+border:1px solid #ddd;
+border-radius:6px;
+
+}
+
+.add-item button{
+
+padding:10px;
+background:#ff4d4d;
+color:white;
+border:none;
+border-radius:6px;
+cursor:pointer;
+
+}
+
+.add-item button:hover{
+
+background:#e60023;
+
+}
+
+</style>
+
+{% endblock %}
