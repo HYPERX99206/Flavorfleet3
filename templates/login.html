@@ -37,10 +37,21 @@ Login
 <span>OR</span>
 </div>
 
-<button class="google-btn" onclick="googleLogin()">
-<img src="https://cdn-icons-png.flaticon.com/512/2991/2991148.png">
-Sign in with Google
-</button>
+<!-- Google Login -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<div id="g_id_onload"
+     data-client_id="461666237020-v9q25vcpdtl9ui9rrff101ce5lhp1mqb.apps.googleusercontent.com"
+     data-callback="handleCredentialResponse">
+</div>
+
+<div class="g_id_signin"
+     data-type="standard"
+     data-size="large"
+     data-theme="outline"
+     data-text="sign_in_with"
+     data-shape="rectangular">
+</div>
 
 <p class="auth-switch">
 Don't have an account?
@@ -51,20 +62,7 @@ Don't have an account?
 
 </div>
 
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-
 <script>
-
-function googleLogin(){
-
-google.accounts.id.initialize({
-client_id: "461666237020-v9q25vcpdtl9ui9rrff101ce5lhp1mqb.apps.googleusercontent.com",
-callback: handleCredentialResponse
-});
-
-google.accounts.id.prompt();
-
-}
 
 function handleCredentialResponse(response){
 

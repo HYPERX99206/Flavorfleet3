@@ -245,7 +245,6 @@ def google_login():
     token = request.json["token"]
 
     try:
-
         idinfo = id_token.verify_oauth2_token(
             token,
             grequests.Request(),
@@ -255,31 +254,35 @@ def google_login():
         email = idinfo["email"]
         name = idinfo["name"]
 
-        conn = get_db()
+        # split name
+        names = name.split(" ", 1)
+        first_name = names[0]
+        last_name = names[1] if len(names) > 1 else ""
 
-        user = conn.execute(
+        conn = get_db()
+        cur = conn.cursor()
+
+        # check if user already exists
+        user = cur.execute(
             "SELECT * FROM users WHERE email=?",
             (email,)
         ).fetchone()
 
-        # Create user if not exists
+        # if not exists, create user
         if not user:
-
-            conn.execute(
-                "INSERT INTO users(first_name,last_name,email,contact,password) VALUES(?,?,?,?,?)",
-                (name,"GoogleUser",email,"0000000000","google_account")
+            cur.execute(
+                "INSERT INTO users (first_name, last_name, email, contact, pass) VALUES (?, ?, ?, ?, ?)",
+                (first_name, last_name, email, "", "google_account")
             )
-
             conn.commit()
 
-        conn.close()
+        session["user"] = email
+        session["name"] = first_name
 
-        session["user"] = name
+        return {"status": "success"}
 
-        return {"status":"success"}
-
-    except Exception as e:
-        return {"status":"error"}
+    except ValueError:
+        return {"status": "error"}
 
 # LOGOUT
 @app.route("/logout")
