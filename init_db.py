@@ -3,11 +3,13 @@ import sqlite3
 conn = sqlite3.connect("flavorfleet.db")
 cur = conn.cursor()
 
-# USERS TABLE
 cur.execute("""
-CREATE TABLE users(
+CREATE TABLE IF NOT EXISTS users(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
-username TEXT,
+first_name TEXT,
+last_name TEXT,
+email TEXT UNIQUE,
+contact TEXT,
 password TEXT
 )
 """)
@@ -95,6 +97,9 @@ user TEXT,
 message TEXT,
 remind_time TEXT
 );""")
+
+
+
 
 conn.commit()
 

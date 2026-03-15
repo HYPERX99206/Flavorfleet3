@@ -1,8 +1,13 @@
 from flask import Flask, render_template, request, redirect, session, url_for
 import sqlite3
+from google.oauth2 import id_token
+from google.auth.transport import requests as grequests
 
 app = Flask(__name__)
 app.secret_key = "flavorfleet_secret"
+
+
+GOOGLE_CLIENT_ID = "461666237020-v9q25vcpdtl9ui9rrff101ce5lhp1mqb.apps.googleusercontent.com"
 
 
 # DATABASE CONNECTION
@@ -163,61 +168,64 @@ def checkout():
 
 
 # LOGIN
-@app.route("/login", methods=["GET", "POST"])
+@app.route("/login", methods=["GET","POST"])
 def login():
 
     if request.method == "POST":
 
-        username = request.form.get("username")
+        email = request.form.get("email")
         password = request.form.get("password")
-
-        if not username or not password:
-            return "Please fill all fields"
 
         conn = get_db()
 
         user = conn.execute(
-            "SELECT * FROM users WHERE username=? AND password=?",
-            (username, password)
+            "SELECT * FROM users WHERE email=? AND password=?",
+            (email,password)
         ).fetchone()
 
         conn.close()
 
         if user:
-            session["user"] = username
+            session["user"] = user["first_name"]
             return redirect("/dashboard")
-        else:
-            return "Invalid username or password"
+
+        return "Invalid credentials"
 
     return render_template("login.html")
 
 
 # REGISTER
-@app.route("/register", methods=["GET", "POST"])
+@app.route("/register", methods=["GET","POST"])
 def register():
 
     if request.method == "POST":
 
-        username = request.form.get("username")
+        first_name = request.form.get("first_name")
+        last_name = request.form.get("last_name")
+        email = request.form.get("email")
+        contact = request.form.get("contact")
         password = request.form.get("password")
+        confirm = request.form.get("confirm_password")
 
-        if not username or not password:
+        if not first_name or not last_name or not email or not contact or not password:
             return "Please fill all fields"
+
+        if password != confirm:
+            return "Passwords do not match"
 
         conn = get_db()
 
         existing = conn.execute(
-            "SELECT * FROM users WHERE username=?",
-            (username,)
+            "SELECT * FROM users WHERE email=?",
+            (email,)
         ).fetchone()
 
         if existing:
-            conn.close()
-            return "User already exists"
+            return "Email already registered"
 
         conn.execute(
-            "INSERT INTO users(username,password) VALUES(?,?)",
-            (username, password)
+            "INSERT INTO users(first_name,last_name,email,contact,password) VALUES(?,?,?,?,?)",
+            (first_name,last_name,email,contact,password)
         )
 
         conn.commit()
@@ -228,108 +236,50 @@ def register():
     return render_template("register.html")
 
 
-# ORDERS
-@app.route("/orders")
-def orders():
-
-    if "user" not in session:
-        return redirect("/login")
-
-    return render_template("orders.html")
+# GOOGLE LOGIN
 
 
-# SETTINGS
-@app.route("/settings")
-def settings():
+@app.route("/google_login", methods=["POST"])
+def google_login():
 
-    if "user" not in session:
-        return redirect("/login")
+    token = request.json["token"]
 
-    return render_template("settings.html")
+    try:
 
+        idinfo = id_token.verify_oauth2_token(
+            token,
+            grequests.Request(),
+            GOOGLE_CLIENT_ID
+        )
 
-# SUBSCRIPTIONS
-@app.route("/subscriptions")
-def subscriptions():
+        email = idinfo["email"]
+        name = idinfo["name"]
 
-    if "user" not in session:
-        return redirect("/login")
+        conn = get_db()
 
-    conn = get_db()
+        user = conn.execute(
+            "SELECT * FROM users WHERE email=?",
+            (email,)
+        ).fetchone()
 
-    subs = conn.execute(
-        "SELECT * FROM subscriptions WHERE user=?",
-        (session["user"],)
-    ).fetchall()
+        # Create user if not exists
+        if not user:
 
-    conn.close()
+            conn.execute(
+                "INSERT INTO users(first_name,last_name,email,contact,password) VALUES(?,?,?,?,?)",
+                (name,"GoogleUser",email,"0000000000","google_account")
+            )
 
-    return render_template("subscriptions.html", subs=subs)
+            conn.commit()
 
+        conn.close()
 
-# ADD SUBSCRIPTION
-@app.route("/add_subscription", methods=["POST"])
-def add_subscription():
+        session["user"] = name
 
-    if "user" not in session:
-        return redirect("/login")
+        return {"status":"success"}
 
-    plan = request.form.get("plan")
-
-    conn = get_db()
-
-    conn.execute(
-        "INSERT INTO subscriptions(user,plan,status,start_date) VALUES(?,?,?,date('now'))",
-        (session["user"], plan, "active")
-    )
-
-    conn.commit()
-    conn.close()
-
-    return redirect("/subscriptions")
-
-
-# REMINDERS
-@app.route("/reminders")
-def reminders():
-
-    if "user" not in session:
-        return redirect("/login")
-
-    conn = get_db()
-
-    data = conn.execute(
-        "SELECT * FROM reminders WHERE user=?",
-        (session["user"],)
-    ).fetchall()
-
-    conn.close()
-
-    return render_template("reminders.html", reminders=data)
-
-
-# ADD REMINDER
-@app.route("/add_reminder", methods=["POST"])
-def add_reminder():
-
-    if "user" not in session:
-        return redirect("/login")
-
-    msg = request.form.get("message")
-    time = request.form.get("time")
-
-    conn = get_db()
-
-    conn.execute(
-        "INSERT INTO reminders(user,message,remind_time) VALUES(?,?,?)",
-        (session["user"], msg, time)
-    )
-
-    conn.commit()
-    conn.close()
-
-    return redirect("/reminders")
-
+    except Exception as e:
+        return {"status":"error"}
 
 # LOGOUT
 @app.route("/logout")
