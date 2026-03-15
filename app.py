@@ -167,6 +167,29 @@ def checkout():
     return render_template("checkout.html")
 
 
+# ORDERS
+@app.route("/orders")
+def orders():
+    return render_template("orders.html")
+
+
+# REMINDERS
+@app.route("/reminders")
+def reminders():
+    return render_template("reminders.html")
+
+
+# SUBSCRIPTION
+@app.route("/subscription")
+def subscription():
+    return render_template("subscription.html")
+
+# PROFILE
+@app.route("/profile")
+def profile():
+    return render_template("profile.html")
+
+
 # LOGIN
 @app.route("/login", methods=["GET","POST"])
 def login():
@@ -237,8 +260,6 @@ def register():
 
 
 # GOOGLE LOGIN
-
-
 @app.route("/google_login", methods=["POST"])
 def google_login():
 
@@ -254,35 +275,33 @@ def google_login():
         email = idinfo["email"]
         name = idinfo["name"]
 
-        # split name
-        names = name.split(" ", 1)
+        names = name.split(" ",1)
         first_name = names[0]
-        last_name = names[1] if len(names) > 1 else ""
+        last_name = names[1] if len(names)>1 else ""
 
         conn = get_db()
         cur = conn.cursor()
 
-        # check if user already exists
         user = cur.execute(
             "SELECT * FROM users WHERE email=?",
             (email,)
         ).fetchone()
 
-        # if not exists, create user
         if not user:
             cur.execute(
-                "INSERT INTO users (first_name, last_name, email, contact, pass) VALUES (?, ?, ?, ?, ?)",
-                (first_name, last_name, email, "", "google_account")
+                "INSERT INTO users (first_name,last_name,email,contact,password) VALUES (?,?,?,?,?)",
+                (first_name,last_name,email,"","google_account")
             )
             conn.commit()
 
-        session["user"] = email
-        session["name"] = first_name
+        session["user"] = first_name
 
-        return {"status": "success"}
+        return {"status":"success"}
 
-    except ValueError:
-        return {"status": "error"}
+    except Exception as e:
+        print(e)
+        return {"status":"error"}
+
 
 # LOGOUT
 @app.route("/logout")
