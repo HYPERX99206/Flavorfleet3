@@ -180,9 +180,9 @@ def reminders():
 
 
 # SUBSCRIPTION
-@app.route("/subscription")
+@app.route("/subscriptions")
 def subscription():
-    return render_template("subscription.html")
+    return render_template("subscriptions.html")
 
 # PROFILE
 @app.route("/profile")
