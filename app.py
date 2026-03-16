@@ -1,38 +1,35 @@
 import os
-from flask import Flask, render_template, request, redirect, session, url_for, jsonify
+from flask import Flask, render_template, request, redirect, session, jsonify
 import sqlite3
 import razorpay
+from dotenv import load_dotenv
 from google.oauth2 import id_token
 from google.auth.transport import requests as grequests
-from dotenv import load_dotenv
 
 # Load .env variables
 load_dotenv()
 
-# App & secret
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "flavorfleet_secret")
 
-# Razorpay credentials from .env
+# Razorpay keys
 RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")
 RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
-
 razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
 # Google OAuth
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
-# Database connection
 DB_PATH = os.getenv("DATABASE_URL", "flavorfleet.db")
+
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
-# -----------------------
-# ROUTES
-# -----------------------
-
+# --------------------------
+# Home / Dashboard
+# --------------------------
 @app.route("/")
 def landing():
     try:
@@ -41,8 +38,8 @@ def landing():
         conn.close()
         return render_template("landing.html", restaurants=restaurants)
     except Exception as e:
-        print("Landing error:", e)
-        return "Something went wrong. Please try later."
+        print("Home error:", e)
+        return "Something went wrong."
 
 @app.route("/dashboard")
 def dashboard():
@@ -57,36 +54,35 @@ def dashboard():
         print("Dashboard error:", e)
         return "Something went wrong."
 
-@app.route("/restaurants")
-def restaurants():
-    try:
-        conn = get_db()
-        restaurants = conn.execute("SELECT * FROM restaurants WHERE available=1").fetchall()
-        conn.close()
-        return render_template("restaurants.html", restaurants=restaurants)
-    except Exception as e:
-        print("Restaurants error:", e)
-        return "Something went wrong."
-
+# --------------------------
+# Restaurants / Menu
+# --------------------------
 @app.route("/restaurant/<int:restaurant_id>")
 def restaurant_menu(restaurant_id):
     try:
         conn = get_db()
-        restaurant = conn.execute("SELECT * FROM restaurants WHERE id=? AND available=1", (restaurant_id,)).fetchone()
+        restaurant = conn.execute(
+            "SELECT * FROM restaurants WHERE id=? AND available=1", (restaurant_id,)
+        ).fetchone()
         if not restaurant:
             conn.close()
             return "Restaurant not available."
-        items = conn.execute("SELECT * FROM menu_items WHERE restaurant_id=? AND available=1", (restaurant_id,)).fetchall()
-        categories = conn.execute("SELECT DISTINCT category FROM menu_items WHERE restaurant_id=? AND available=1", (restaurant_id,)).fetchall()
+        items = conn.execute(
+            "SELECT * FROM menu_items WHERE restaurant_id=? AND available=1", (restaurant_id,)
+        ).fetchall()
+        categories = conn.execute(
+            "SELECT DISTINCT category FROM menu_items WHERE restaurant_id=? AND available=1",
+            (restaurant_id,)
+        ).fetchall()
         conn.close()
         return render_template("menu.html", restaurant=restaurant, items=items, categories=categories)
     except Exception as e:
         print("Menu error:", e)
         return "Something went wrong."
 
-# -----------------------
-# CART
-# -----------------------
+# --------------------------
+# Cart
+# --------------------------
 @app.route("/add_to_cart/<int:item_id>")
 def add_to_cart(item_id):
     session.setdefault("cart", [])
@@ -103,11 +99,13 @@ def remove_from_cart(item_id):
 @app.route("/cart")
 def cart():
     session.setdefault("cart", [])
-    items = []
     try:
         conn = get_db()
+        items = []
         for item_id in session["cart"]:
-            item = conn.execute("SELECT * FROM menu_items WHERE id=? AND available=1", (item_id,)).fetchone()
+            item = conn.execute(
+                "SELECT * FROM menu_items WHERE id=? AND available=1", (item_id,)
+            ).fetchone()
             if item:
                 items.append(item)
         conn.close()
@@ -116,9 +114,9 @@ def cart():
         print("Cart error:", e)
         return "Something went wrong."
 
-# -----------------------
-# CHECKOUT
-# -----------------------
+# --------------------------
+# Checkout & Payment
+# --------------------------
 @app.route("/checkout")
 def checkout():
     if "user" not in session:
@@ -126,23 +124,24 @@ def checkout():
     session.setdefault("cart", [])
     if not session["cart"]:
         return "Your cart is empty."
-
     try:
         conn = get_db()
         items = []
-        total_amount = 0
+        total = 0
         for item_id in session["cart"]:
-            item = conn.execute("SELECT * FROM menu_items WHERE id=? AND available=1", (item_id,)).fetchone()
-            if item and item["price"]:
+            item = conn.execute(
+                "SELECT * FROM menu_items WHERE id=? AND available=1", (item_id,)
+            ).fetchone()
+            if item:
                 items.append(item)
-                total_amount += float(item["price"])
+                total += float(item["price"])
         conn.close()
 
-        if total_amount <= 0:
-            return "Cart total invalid. Please check items."
+        if total <= 0:
+            return "Cart total invalid. Some items may not be available."
 
         razorpay_order = razorpay_client.order.create({
-            "amount": int(total_amount * 100),
+            "amount": int(total*100),
             "currency": "INR",
             "payment_capture": "1"
         })
@@ -150,7 +149,7 @@ def checkout():
         return render_template(
             "checkout.html",
             items=items,
-            total=total_amount,
+            total=total,
             razorpay_order_id=razorpay_order["id"],
             razorpay_key_id=RAZORPAY_KEY_ID
         )
@@ -162,53 +161,57 @@ def checkout():
 def payment_success():
     data = request.json
     try:
-        if not all(k in data for k in ["razorpay_payment_id", "razorpay_order_id", "razorpay_signature"]):
-            return {"status": "error", "msg": "Invalid payment data"}
+        if not all(k in data for k in ["razorpay_payment_id","razorpay_order_id","razorpay_signature"]):
+            return {"status":"error","msg":"Invalid payment data"}
 
         razorpay_client.utility.verify_payment_signature(data)
 
         conn = get_db()
-        total_amount = 0
+        total = 0
         for item_id in session.get("cart", []):
-            row = conn.execute("SELECT price FROM menu_items WHERE id=? AND available=1", (item_id,)).fetchone()
-            if row and row["price"] is not None:
-                total_amount += float(row["price"])
+            row = conn.execute(
+                "SELECT price FROM menu_items WHERE id=? AND available=1", (item_id,)
+            ).fetchone()
+            if row:
+                total += float(row["price"])
 
-        if total_amount <= 0:
-            return {"status": "error", "msg": "Cart empty or items unavailable"}
+        if total <= 0:
+            return {"status":"error","msg":"Cart empty or items unavailable"}
 
         conn.execute(
             "INSERT INTO orders(user,total_amount,status) VALUES(?,?,?)",
-            (session["user"], total_amount, "Paid")
+            (session["user"], total, "Paid")
         )
         conn.commit()
         conn.close()
         session["cart"] = []
 
-        return {"status": "success"}
+        return {"status":"success"}
     except Exception as e:
         print("Payment failed:", e)
-        return {"status": "error", "msg": str(e)}
+        return {"status":"error","msg":str(e)}
 
-# -----------------------
-# ORDERS
-# -----------------------
+# --------------------------
+# Orders
+# --------------------------
 @app.route("/orders")
 def orders():
     if "user" not in session:
         return redirect("/login")
     try:
         conn = get_db()
-        orders = conn.execute("SELECT * FROM orders WHERE user=? ORDER BY id DESC", (session["user"],)).fetchall()
+        orders = conn.execute(
+            "SELECT * FROM orders WHERE user=? ORDER BY id DESC", (session["user"],)
+        ).fetchall()
         conn.close()
         return render_template("orders.html", orders=orders)
     except Exception as e:
         print("Orders error:", e)
         return "Something went wrong."
 
-# -----------------------
-# AUTH
-# -----------------------
+# --------------------------
+# Login / Register / Logout
+# --------------------------
 @app.route("/login", methods=["GET","POST"])
 def login():
     if request.method=="POST":
@@ -216,7 +219,9 @@ def login():
         password = request.form.get("password")
         try:
             conn = get_db()
-            user = conn.execute("SELECT * FROM users WHERE email=? AND password=?", (email,password)).fetchone()
+            user = conn.execute(
+                "SELECT * FROM users WHERE email=? AND password=?", (email,password)
+            ).fetchone()
             conn.close()
             if user:
                 session["user"] = user["first_name"]
@@ -258,21 +263,49 @@ def register():
             return "Registration failed."
     return render_template("register.html")
 
+# --------------------------
+# Google Login
+# --------------------------
+@app.route("/google_login", methods=["POST"])
+def google_login():
+    token = request.json.get("token")
+    try:
+        idinfo = id_token.verify_oauth2_token(token, grequests.Request(), GOOGLE_CLIENT_ID)
+        email = idinfo["email"]
+        name = idinfo.get("name","")
+        names = name.split(" ",1)
+        first_name = names[0]
+        last_name = names[1] if len(names)>1 else ""
+        conn = get_db()
+        user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+        if not user:
+            conn.execute(
+                "INSERT INTO users(first_name,last_name,email,contact,password) VALUES(?,?,?,?,?)",
+                (first_name,last_name,email,"","google_account")
+            )
+            conn.commit()
+        conn.close()
+        session["user"] = first_name
+        return {"status":"success"}
+    except Exception as e:
+        print("Google login error:", e)
+        return {"status":"error"}
+
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/")
 
-# -----------------------
-# CART COUNT
-# -----------------------
+# --------------------------
+# Cart count API
+# --------------------------
 @app.route("/cart_count")
 def cart_count():
     return jsonify({"count": len(session.get("cart", []))})
 
-# -----------------------
-# RUN SERVER
-# -----------------------
+# --------------------------
+# Run server
+# --------------------------
 if __name__=="__main__":
-    port = int(os.getenv("PORT", 5000))
+    port = int(os.getenv("PORT",5000))
     app.run(host="0.0.0.0", port=port, debug=True)
