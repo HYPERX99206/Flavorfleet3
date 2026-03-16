@@ -3,79 +3,83 @@
 
 <head>
 
-<title>FlavorFleet</title>
+    <title>FlavorFleet</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/static/css/style.css">
 
-<link rel="stylesheet" href="/static/css/style.css">
-
-<!-- Added dashboard CSS -->
-<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <!-- Added dashboard CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 
 </head>
 
 <body>
 
-<div class="floating-cart" id="floatingCart">
+    <!-- ================= FLOATING CART ================= -->
+    <div class="floating-cart" id="floatingCart">
 
-<div class="cart-icon">
-🛒
-<span id="cartCount">0</span>
-</div>
+        <div class="cart-icon">
+            🛒
+            <span id="cartCount">{{ session.get("cart", []) | length }}</span>
+        </div>
 
-<a href="/cart" class="view-cart-btn">
-View Cart
-</a>
+        <a href="/cart" class="view-cart-btn">
+            View Cart
+        </a>
 
-</div>
+    </div>
 
-<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 
-<header class="navbar">
+    <!-- ================= NAVBAR ================= -->
+    <header class="navbar">
 
-<div class="logo">🍔 FlavorFleet</div>
-<button onclick="toggleTheme()">🌙 Theme</button>
+        <div class="logo">🍔 FlavorFleet</div>
+        <button onclick="toggleTheme()">🌙 Theme</button>
 
-<nav>
+        <nav>
 
-<a href="/restaurants">Home</a>
-<a href="/restaurants">Restaurants</a>
-<a href="/cart">Cart</a>
-<a href="/dashboard">Dashboard</a>
+            <a href="/restaurants">Home</a>
+            <a href="/restaurants">Restaurants</a>
+            <a href="/dashboard">Dashboard</a>
 
-{% if session.get("user") %}
+            {% if session.get("user") %}
+                <a href="/orders">Orders</a>
+                <a href="/reminders">Reminders</a>
+                <a href="/settings">Settings</a>
+                <a href="/logout">Logout</a>
+            {% else %}
+                <a href="/login">Login</a>
+                <a href="/register">Register</a>
+            {% endif %}
 
-<a href="/orders">Orders</a>
-<a href="/reminders">Reminders</a>
-<a href="/settings">Settings</a>
-<a href="/logout">Logout</a>
+        </nav>
 
-{% else %}
+    </header>
 
-<a href="/login">Login</a>
-<a href="/register">Register</a>
+    <div class="container">
 
-{% endif %}
+        {% block content %}{% endblock %}
 
-</nav>
+    </div>
 
-</header>
+    <!-- ================= SCRIPTS ================= -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 
-<div class="container">
+    <!-- Update floating cart count dynamically -->
+    <script>
+        function updateCartCount() {
+            fetch('/cart_count')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('cartCount').innerText = data.count;
+                });
+        }
 
-{% block content %}{% endblock %}
-
-</div>
-
-<a href="/cart" class="cart-bubble">
-🛒
-<span class="cart-count">
-{{ session.get("cart", []) | length }}
-</span>
-</a>
-
-<script src="{{ url_for('static', filename='js/script.js') }}"></script>
-<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+        // Update on page load
+        updateCartCount();
+    </script>
 
 </body>
 </html>

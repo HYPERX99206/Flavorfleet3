@@ -87,10 +87,10 @@ def remove_from_cart(item_id):
         session["cart"].remove(item_id)
     return redirect("/cart")
 
-@app.route("/cart_count")
+@app.route('/cart_count')
 def cart_count():
-    return jsonify({"count": len(session.get("cart", []))})
-
+    count = len(session.get("cart", []))
+    return jsonify({"count": count})
 # -----------------------------
 # CHECKOUT & PAYMENT
 # -----------------------------

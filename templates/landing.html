@@ -1,42 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <title>FlavorFleet</title>
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <!-- Main CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-
-
-<body class="landing-page">
-
-
-<!-- ================= NAVBAR ================= -->
-
-<nav class="navbar">
-
-    <div class="logo">
-        FlavorFleet 🍔
-    </div>
-
-    <div class="nav-links">
-        <a href="/">Home</a>
-        <a href="/restaurants">Restaurants</a>
-        <a href="/cart">Cart</a>
-        <a href="/login">Login</a>
-        <a href="/register">Register</a>
-    </div>
-
-</nav>
-
-
+{% block content %}
 
 <!-- ================= HERO SECTION ================= -->
-
 <section class="hero">
 
     <div class="hero-content">
@@ -57,10 +23,8 @@
 
 </section>
 
-
-
 <!-- ================= RESTAURANTS PREVIEW ================= -->
-
+{#
 <section class="home-restaurants">
 
     <h2>Restaurants Around You</h2>
@@ -96,11 +60,9 @@
     </div>
 
 </section>
-
-
+#}
 
 <!-- ================= FOOTER ================= -->
-
 <footer class="footer">
 
     <p>
@@ -109,6 +71,4 @@
 
 </footer>
 
-
-</body>
-</html>
+{% endblock %}
