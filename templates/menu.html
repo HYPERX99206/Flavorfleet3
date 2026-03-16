@@ -3,140 +3,77 @@
 {% block content %}
 
 <div class="restaurant-header">
+    <h1>{{ restaurant.name }}</h1>
+    {% if not restaurant.available %}
+    <p style="color:red;font-weight:bold;">Restaurant currently not available.</p>
+    {% endif %}
 
-<h1>{{ restaurant.name }}</h1>
+    <div class="restaurant-meta">
+        <span class="rating" data-rating="{{ restaurant.rating }}"></span>
+        <span class="delivery">
+        🛵 Delivery: {{ restaurant.min_delivery_time }} - {{ restaurant.max_delivery_time }} mins
+        </span>
+    </div>
 
-<div class="restaurant-meta">
-
-<span class="rating" data-rating="{{ restaurant.rating }}"></span>
-
-<span class="delivery">
-🛵 {{ restaurant.delivery_time }} mins
-</span>
-
+    <p class="cuisine">{{ restaurant.cuisine }}</p>
 </div>
-
-<p class="cuisine">
-{{ restaurant.cuisine }}
-</p>
-
-</div>
-
 
 <h2 class="menu-title">Menu</h2>
 
-
 <div class="menu-layout">
 
-<!-- SIDEBAR -->
+    <!-- SIDEBAR -->
+    <div class="menu-sidebar">
+        <h3>Menu</h3>
+        {% for cat in categories %}
+        <a href="#{{ cat.category | replace(' ','') }}">{{ cat.category }}</a>
+        {% endfor %}
+    </div>
 
-<div class="menu-sidebar">
-
-<h3>Menu</h3>
-
-{% for cat in categories %}
-<a href="#{{ cat.category | replace(' ','') }}">
-{{ cat.category }}
-</a>
-{% endfor %}
-
+    <!-- MENU CONTENT -->
+    <div class="menu-content">
+        {% for cat in categories %}
+        <div class="menu-section" id="{{ cat.category | replace(' ','') }}">
+            <h2 class="menu-category">{{ cat.category }}</h2>
+            <div class="menu-grid">
+                {% for item in items %}
+                {% if item.category == cat.category %}
+                <div class="menu-card">
+                    <img src="/static/images/{{ item.image }}" class="menu-img">
+                    <div class="menu-info">
+                        <h3 class="menu-name">{{ item.name }}</h3>
+                        <p class="menu-desc">Delicious {{ item.name }} prepared fresh with quality ingredients.</p>
+                        <div class="menu-meta">
+                            <span class="menu-price">₹ {{ item.price }}</span>
+                            <span class="rating" data-rating="{{ restaurant.rating }}"></span>
+                        </div>
+                        {% if restaurant.available and item.available %}
+                        <a href="/add_to_cart/{{ item.id }}" class="add-btn">Add to Cart</a>
+                        {% else %}
+                        <span style="color:red;font-weight:bold;">Not Available</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
 </div>
-
-
-<!-- MENU CONTENT -->
-
-<div class="menu-content">
-
-{% for cat in categories %}
-
-<div class="menu-section" id="{{ cat.category | replace(' ','') }}">
-
-<h2 class="menu-category">
-{{ cat.category }}
-</h2>
-
-<div class="menu-grid">
-
-{% for item in items %}
-{% if item.category == cat.category %}
-
-<div class="menu-card">
-
-<img src="/static/images/{{ item.image }}" class="menu-img">
-
-<div class="menu-info">
-
-<h3 class="menu-name">
-{{ item.name }}
-</h3>
-
-<p class="menu-desc">
-Delicious {{ item.name }} prepared fresh with quality ingredients.
-</p>
-
-<div class="menu-meta">
-
-<span class="menu-price">
-₹ {{ item.price }}
-</span>
-
-<span class="rating" data-rating="{{ restaurant.rating }}"></span>
-
-</div>
-
-<a href="/add_to_cart/{{ item.id }}" class="add-btn">
-Add to Cart
-</a>
-
-</div>
-
-</div>
-
-{% endif %}
-{% endfor %}
-
-</div>
-
-</div>
-
-{% endfor %}
-
-</div>
-
-</div>
-
-
-<!-- RATING SCRIPT -->
 
 <script>
-
 document.querySelectorAll(".rating").forEach(function(el){
-
-let rating = parseFloat(el.dataset.rating) || 0
-
-let fullStars = Math.floor(rating)
-let halfStar = rating % 1 >= 0.5
-let stars = ""
-
-for(let i=0;i<fullStars;i++){
-stars += '<span class="star full">★</span>'
-}
-
-if(halfStar){
-stars += '<span class="star half">★</span>'
-}
-
-let empty = 5 - fullStars - (halfStar ? 1 : 0)
-
-for(let i=0;i<empty;i++){
-stars += '<span class="star empty">★</span>'
-}
-
-el.innerHTML = stars + " " + rating.toFixed(1)
-
+    let rating = parseFloat(el.dataset.rating) || 0
+    let fullStars = Math.floor(rating)
+    let halfStar = rating % 1 >= 0.5
+    let stars = ""
+    for(let i=0;i<fullStars;i++){ stars += '<span class="star full">★</span>' }
+    if(halfStar){ stars += '<span class="star half">★</span>' }
+    let empty = 5 - fullStars - (halfStar ? 1 : 0)
+    for(let i=0;i<empty;i++){ stars += '<span class="star empty">★</span>' }
+    el.innerHTML = stars + " " + rating.toFixed(1)
 })
-
 </script>
-
 
 {% endblock %}

@@ -7,12 +7,15 @@
 {% if items|length > 0 %}
     <ul>
     {% for item in items %}
-        <li>{{ item.name }} - ₹ {{ item.price }}</li>
+        <li>{{ item.name }} - ₹ {{ item.price }} {% if not item.available %}(Not Available){% endif %}</li>
     {% endfor %}
     </ul>
 
     <p>Total: ₹ {{ total }}</p>
 
+    {% set all_available = items | selectattr("available") | list | length == items | length %}
+
+    {% if all_available %}
     <!-- Razorpay Button -->
     <button id="rzp-button">Pay Now</button>
 
@@ -20,7 +23,7 @@
     <script>
     var options = {
         "key": "{{ razorpay_key_id }}",
-        "amount": "{{ total*100 }}",  // Amount in paise
+        "amount": "{{ total*100 }}",
         "currency": "INR",
         "name": "FlavorFleet",
         "description": "Order Payment",
@@ -37,25 +40,20 @@
             }).then(res => res.json())
               .then(data => {
                 if(data.status === "success"){
-                    // Redirect to a success page with total
-                    window.location.href = "/payment_done?total={{ total }}";
-                } else {
+                    window.location.href = "/orders";
+                 } else {
                     alert("Payment failed!");
-                }
+                 }
               });
         },
-        "theme": {
-            "color": "#F37254"
-        }
+        "theme": { "color": "#F37254" }
     };
-
     var rzp1 = new Razorpay(options);
-
-    document.getElementById('rzp-button').onclick = function(e){
-        rzp1.open();
-        e.preventDefault();
-    }
+    document.getElementById('rzp-button').onclick = function(e){ rzp1.open(); e.preventDefault(); }
     </script>
+    {% else %}
+    <p style="color:red;">Some items are not available. Please remove them to proceed.</p>
+    {% endif %}
 
 {% else %}
     <p>Your cart is empty.</p>

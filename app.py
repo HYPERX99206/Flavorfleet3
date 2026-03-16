@@ -1,38 +1,32 @@
 import os
 from flask import Flask, render_template, request, redirect, session, url_for, jsonify
 import sqlite3
-import razorpay  # Razorpay integration
+import razorpay
 from google.oauth2 import id_token
 from google.auth.transport import requests as grequests
 from dotenv import load_dotenv
 
-# Load .env variables
+# Load .env
 load_dotenv()
 
-# App & secret
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "flavorfleet_secret")
 
-# Razorpay credentials from .env
 RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")
 RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
-
 razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
-# Google OAuth
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-
-# Database connection
 DB_PATH = os.getenv("DATABASE_URL", "flavorfleet.db")
+
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
-# -----------------------
-# ROUTES
-# -----------------------
-
+# -------------------------------
+# HOME / DASHBOARD / RESTAURANTS
+# -------------------------------
 @app.route("/")
 def landing():
     return render_template("landing.html")
@@ -62,6 +56,9 @@ def restaurant_menu(restaurant_id):
     conn.close()
     return render_template("menu.html", restaurant=restaurant, items=items, categories=categories)
 
+# -------------------------------
+# CART
+# -------------------------------
 @app.route("/add_to_cart/<int:item_id>")
 def add_to_cart(item_id):
     session.setdefault("cart", [])
@@ -87,9 +84,9 @@ def remove_from_cart(item_id):
         session["cart"].remove(item_id)
     return redirect("/cart")
 
-# -----------------------
-# Checkout & Payment
-# -----------------------
+# -------------------------------
+# CHECKOUT & PAYMENT
+# -------------------------------
 @app.route("/checkout")
 def checkout():
     if "user" not in session:
@@ -100,20 +97,27 @@ def checkout():
     conn = get_db()
     items = []
     total_amount = 0
+    all_available = True
+
     for item_id in session["cart"]:
         item = conn.execute("SELECT * FROM menu_items WHERE id=?", (item_id,)).fetchone()
-        if item and item["price"]:
+        if item:
+            if not item["available"]:
+                all_available = False
             items.append(item)
-            total_amount += float(item["price"])
+            if item["available"]:
+                total_amount += float(item["price"])
     conn.close()
 
-    if total_amount <= 0:
-        return "Cart total invalid. Please check items."
+    if not all_available:
+        return "Some items in your cart are no longer available. Please remove them."
 
-    # Razorpay order creation
+    if total_amount <= 0:
+        return "Cart total invalid."
+
     try:
         razorpay_order = razorpay_client.order.create({
-            "amount": int(total_amount * 100),  # paise
+            "amount": int(total_amount * 100),
             "currency": "INR",
             "payment_capture": "1"
         })
@@ -133,19 +137,22 @@ def checkout():
 def payment_success():
     data = request.json
     try:
-        # Verify that required keys exist
         if not all(k in data for k in ["razorpay_payment_id", "razorpay_order_id", "razorpay_signature"]):
-            return jsonify({"status": "error", "msg": "Invalid payment data"})
+            return {"status": "error", "msg": "Invalid payment data"}
 
         razorpay_client.utility.verify_payment_signature(data)
 
-        # Record order
         conn = get_db()
         total_amount = 0
+
+        # Only sum prices of available items
         for item_id in session.get("cart", []):
-            row = conn.execute("SELECT price FROM menu_items WHERE id=?", (item_id,)).fetchone()
-            if row and row["price"]:
+            row = conn.execute("SELECT price, available FROM menu_items WHERE id=?", (item_id,)).fetchone()
+            if row and row["available"]:
                 total_amount += float(row["price"])
+
+        if total_amount <= 0:
+            return {"status": "error", "msg": "Cart total invalid"}
 
         conn.execute(
             "INSERT INTO orders(user,total_amount,status) VALUES(?,?,?)",
@@ -155,20 +162,15 @@ def payment_success():
         conn.close()
 
         session["cart"] = []
-        return jsonify({"status": "success"})
 
+        return {"status": "success"}
     except Exception as e:
         print("Payment failed:", e)
-        return jsonify({"status": "error", "msg": str(e)})
+        return {"status": "error", "msg": str(e)}
 
-@app.route("/payment_done")
-def payment_done():
-    total = request.args.get("total", 0)
-    return render_template("payment_success.html", total=total)
-
-# -----------------------
-# Orders, Profile, Login, Register
-# -----------------------
+# -------------------------------
+# ORDERS / PROFILE / LOGIN / REGISTER
+# -------------------------------
 @app.route("/orders")
 def orders():
     if "user" not in session:
@@ -219,7 +221,7 @@ def register():
         contact = request.form.get("contact")
         password = request.form.get("password")
         confirm = request.form.get("confirm_password")
-        if not all([first_name, last_name, email, contact, password]):
+        if not all([first_name,last_name,email,contact,password]):
             return "Please fill all fields"
         if password != confirm:
             return "Passwords do not match"
@@ -227,10 +229,8 @@ def register():
         existing = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
         if existing:
             return "Email already registered"
-        conn.execute(
-            "INSERT INTO users(first_name,last_name,email,contact,password) VALUES(?,?,?,?,?)",
-            (first_name,last_name,email,contact,password)
-        )
+        conn.execute("INSERT INTO users(first_name,last_name,email,contact,password) VALUES(?,?,?,?,?)",
+                     (first_name,last_name,email,contact,password))
         conn.commit()
         conn.close()
         return redirect("/login")
@@ -265,16 +265,16 @@ def logout():
     session.clear()
     return redirect("/")
 
-# -----------------------
-# Floating Cart Count API
-# -----------------------
+# -------------------------------
+# Floating Cart Count
+# -------------------------------
 @app.route("/cart_count")
 def cart_count():
     return jsonify({"count": len(session.get("cart", []))})
 
-# -----------------------
-# Run Server
-# -----------------------
+# -------------------------------
+# Run server
+# -------------------------------
 if __name__=="__main__":
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
