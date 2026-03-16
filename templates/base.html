@@ -1,79 +1,81 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html>
 
-{% block content %}
+<head>
 
-<div class="restaurant-header">
-    <h1>{{ restaurant.name }}</h1>
-    {% if not restaurant.available %}
-    <p style="color:red;font-weight:bold;">Restaurant currently not available.</p>
-    {% endif %}
+<title>FlavorFleet</title>
 
-    <div class="restaurant-meta">
-        <span class="rating" data-rating="{{ restaurant.rating }}"></span>
-        <span class="delivery">
-        🛵 Delivery: {{ restaurant.min_delivery_time }} - {{ restaurant.max_delivery_time }} mins
-        </span>
-    </div>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <p class="cuisine">{{ restaurant.cuisine }}</p>
+<link rel="stylesheet" href="/static/css/style.css">
+
+<!-- Added dashboard CSS -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+
+</head>
+
+<body>
+
+<div class="floating-cart" id="floatingCart">
+
+<div class="cart-icon">
+🛒
+<span id="cartCount">0</span>
 </div>
 
-<h2 class="menu-title">Menu</h2>
+<a href="/cart" class="view-cart-btn">
+View Cart
+</a>
 
-<div class="menu-layout">
-
-    <!-- SIDEBAR -->
-    <div class="menu-sidebar">
-        <h3>Menu</h3>
-        {% for cat in categories %}
-        <a href="#{{ cat.category | replace(' ','') }}">{{ cat.category }}</a>
-        {% endfor %}
-    </div>
-
-    <!-- MENU CONTENT -->
-    <div class="menu-content">
-        {% for cat in categories %}
-        <div class="menu-section" id="{{ cat.category | replace(' ','') }}">
-            <h2 class="menu-category">{{ cat.category }}</h2>
-            <div class="menu-grid">
-                {% for item in items %}
-                {% if item.category == cat.category %}
-                <div class="menu-card">
-                    <img src="/static/images/{{ item.image }}" class="menu-img">
-                    <div class="menu-info">
-                        <h3 class="menu-name">{{ item.name }}</h3>
-                        <p class="menu-desc">Delicious {{ item.name }} prepared fresh with quality ingredients.</p>
-                        <div class="menu-meta">
-                            <span class="menu-price">₹ {{ item.price }}</span>
-                            <span class="rating" data-rating="{{ restaurant.rating }}"></span>
-                        </div>
-                        {% if restaurant.available and item.available %}
-                        <a href="/add_to_cart/{{ item.id }}" class="add-btn">Add to Cart</a>
-                        {% else %}
-                        <span style="color:red;font-weight:bold;">Not Available</span>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endif %}
-                {% endfor %}
-            </div>
-        </div>
-        {% endfor %}
-    </div>
 </div>
 
-<script>
-document.querySelectorAll(".rating").forEach(function(el){
-    let rating = parseFloat(el.dataset.rating) || 0
-    let fullStars = Math.floor(rating)
-    let halfStar = rating % 1 >= 0.5
-    let stars = ""
-    for(let i=0;i<fullStars;i++){ stars += '<span class="star full">★</span>' }
-    if(halfStar){ stars += '<span class="star half">★</span>' }
-    let empty = 5 - fullStars - (halfStar ? 1 : 0)
-    for(let i=0;i<empty;i++){ stars += '<span class="star empty">★</span>' }
-    el.innerHTML = stars + " " + rating.toFixed(1)
-})
-</script>
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 
-{% endblock %}
+<header class="navbar">
+
+<div class="logo">🍔 FlavorFleet</div>
+<button onclick="toggleTheme()">🌙 Theme</button>
+
+<nav>
+
+<a href="/restaurants">Home</a>
+<a href="/restaurants">Restaurants</a>
+<a href="/cart">Cart</a>
+<a href="/dashboard">Dashboard</a>
+
+{% if session.get("user") %}
+
+<a href="/orders">Orders</a>
+<a href="/reminders">Reminders</a>
+<a href="/settings">Settings</a>
+<a href="/logout">Logout</a>
+
+{% else %}
+
+<a href="/login">Login</a>
+<a href="/register">Register</a>
+
+{% endif %}
+
+</nav>
+
+</header>
+
+<div class="container">
+
+{% block content %}{% endblock %}
+
+</div>
+
+<a href="/cart" class="cart-bubble">
+🛒
+<span class="cart-count">
+{{ session.get("cart", []) | length }}
+</span>
+</a>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+
+</body>
+</html>
