@@ -2,7 +2,20 @@
 
 {% block content %}
 
-<h2>Profile Page</h2>
-<p>Edit your account information here.</p>
+<h1>Profile</h1>
+
+<div class="profile-card">
+
+<p><strong>Name:</strong> {{ session['user'] }}</p>
+
+<p><strong>Email:</strong> User email connected to account</p>
+
+<p><strong>Contact:</strong> User phone number</p>
+
+<a href="/settings">
+<button>Back to Settings</button>
+</a>
+
+</div>
 
 {% endblock %}

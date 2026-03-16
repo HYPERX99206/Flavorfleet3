@@ -301,7 +301,10 @@ def google_login():
     except Exception as e:
         print(e)
         return {"status":"error"}
-
+    
+@app.route("/settings")
+def settings():
+    return render_template("settings.html")
 
 # LOGOUT
 @app.route("/logout")

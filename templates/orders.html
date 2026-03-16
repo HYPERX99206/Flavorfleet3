@@ -4,6 +4,8 @@
 
 <h1>Your Orders</h1>
 
+{% if orders %}
+
 {% for o in orders %}
 
 <div class="order">
@@ -15,5 +17,11 @@
 </div>
 
 {% endfor %}
+
+{% else %}
+
+<p>No orders yet.</p>
+
+{% endif %}
 
 {% endblock %}
