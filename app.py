@@ -105,26 +105,23 @@ def checkout():
         item = conn.execute("SELECT * FROM menu_items WHERE id=?", (item_id,)).fetchone()
         if item and item["price"] is not None:
             items.append(item)
-            total_amount += item["price"]
-        else:
-            # Remove invalid items from cart
-            session["cart"].remove(item_id)
+            total_amount += float(item["price"])  # ensure numeric
 
-    if total_amount == 0:
-        return "Your cart is empty"
+    conn.close()
 
+    if total_amount <= 0:
+        return "Cart total invalid. Please check items."
+
+    # Razorpay order creation with try/except
     try:
-        # Razorpay expects amount in paise
         razorpay_order = razorpay_client.order.create({
-            "amount": int(total_amount * 100),
+            "amount": int(total_amount * 100),  # in paise
             "currency": "INR",
             "payment_capture": "1"
         })
     except Exception as e:
-        print("Razorpay Order Creation Failed:", e)
+        print("Razorpay order creation failed:", e)
         return "Payment gateway error. Please try again later."
-
-    conn.close()
 
     return render_template(
         "checkout.html",
@@ -287,22 +284,36 @@ def logout():
 @app.route("/payment_success", methods=["POST"])
 def payment_success():
     data = request.json
+
     try:
+        # Ensure keys exist
+        if not all(k in data for k in ["razorpay_payment_id", "razorpay_order_id", "razorpay_signature"]):
+            return {"status": "error", "msg": "Invalid payment data"}
+
+        # Verify payment signature
         razorpay_client.utility.verify_payment_signature(data)
+
         conn = get_db()
-        total_amount = sum(
-            conn.execute("SELECT price FROM menu_items WHERE id=?", (item_id,)).fetchone()["price"]
-            for item_id in session["cart"]
+        total_amount = 0
+        for item_id in session.get("cart", []):
+            row = conn.execute("SELECT price FROM menu_items WHERE id=?", (item_id,)).fetchone()
+            if row and row["price"] is not None:
+                total_amount += float(row["price"])
+
+        conn.execute(
+            "INSERT INTO orders(user,total_amount,status) VALUES(?,?,?)",
+            (session["user"], total_amount, "Paid")
         )
-        conn.execute("INSERT INTO orders(user,total_amount,status) VALUES(?,?,?)",
-                     (session["user"], total_amount, "Paid"))
         conn.commit()
         conn.close()
+
         session["cart"] = []
+
         return {"status": "success"}
+
     except Exception as e:
-        print(e)
-        return {"status": "error"}
+        print("Payment failed:", e)
+        return {"status": "error", "msg": str(e)}
 
 @app.route("/payment_done")
 def payment_done():
