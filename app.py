@@ -82,10 +82,19 @@ def add_to_cart(item_id):
 
 @app.route("/remove_from_cart/<int:item_id>")
 def remove_from_cart(item_id):
-    session.setdefault("cart", [])
-    if item_id in session["cart"]:
-        session["cart"].remove(item_id)
-    return redirect("/cart")
+    # Get current cart from session
+    cart = session.get("cart", [])
+    
+    # Remove the item by ID
+    cart = [i for i in cart if i != item_id]  # if cart stores IDs
+    # If your cart stores dicts: cart = [i for i in cart if i["id"] != item_id]
+    
+    # Save back to session
+    session["cart"] = cart
+    session.modified = True  # Important to persist changes
+    
+    # Redirect back to the page user came from
+    return redirect(request.referrer or "/cart")
 
 @app.route('/cart_count')
 def cart_count():
