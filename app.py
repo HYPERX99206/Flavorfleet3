@@ -1,13 +1,13 @@
+import os
 from flask import Flask, render_template, request, redirect, session, url_for
 import sqlite3
+import razorpay  # Razorpay integration
 from google.oauth2 import id_token
 from google.auth.transport import requests as grequests
-import os  # Added for Render PORT
-import razorpay  # Razorpay integration
 
-# Razorpay credentials
 RAZORPAY_KEY_ID = "YOUR_KEY_ID"
 RAZORPAY_KEY_SECRET = "YOUR_KEY_SECRET"
+
 razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
 app = Flask(__name__)
