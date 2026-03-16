@@ -293,6 +293,11 @@ def payment_done():
     total = request.args.get("total", 0)
     return render_template("payment_success.html", total=total)
 
+@app.route("/check_packages")
+def check_packages():
+    import razorpay
+    return f"Razorpay installed: {razorpay.__version__}"
+
 # RUN SERVER
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
