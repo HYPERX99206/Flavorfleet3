@@ -96,27 +96,43 @@ def checkout():
         return redirect("/login")
     if "cart" not in session or len(session["cart"]) == 0:
         return "Your cart is empty"
+
     conn = get_db()
     total_amount = 0
     items = []
+
     for item_id in session["cart"]:
         item = conn.execute("SELECT * FROM menu_items WHERE id=?", (item_id,)).fetchone()
-        if item:
+        if item and item["price"] is not None:
             items.append(item)
             total_amount += item["price"]
-    # Razorpay order creation (amount in paise)
-    razorpay_order = razorpay_client.order.create({
-        "amount": total_amount * 100,
-        "currency": "INR",
-        "payment_capture": "1"
-    })
-    conn.close()
-    return render_template("checkout.html",
-                           items=items,
-                           total=total_amount,
-                           razorpay_order_id=razorpay_order["id"],
-                           razorpay_key_id=RAZORPAY_KEY_ID)
+        else:
+            # Remove invalid items from cart
+            session["cart"].remove(item_id)
 
+    if total_amount == 0:
+        return "Your cart is empty"
+
+    try:
+        # Razorpay expects amount in paise
+        razorpay_order = razorpay_client.order.create({
+            "amount": int(total_amount * 100),
+            "currency": "INR",
+            "payment_capture": "1"
+        })
+    except Exception as e:
+        print("Razorpay Order Creation Failed:", e)
+        return "Payment gateway error. Please try again later."
+
+    conn.close()
+
+    return render_template(
+        "checkout.html",
+        items=items,
+        total=total_amount,
+        razorpay_order_id=razorpay_order["id"],
+        razorpay_key_id=RAZORPAY_KEY_ID
+    )
 # ORDERS
 @app.route("/orders")
 def orders():
@@ -297,6 +313,12 @@ def payment_done():
 def check_packages():
     import razorpay
     return f"Razorpay installed: {razorpay.__version__}"
+
+# CART COUNT API for floating cart
+@app.route("/cart_count")
+def cart_count():
+    count = len(session.get("cart", []))
+    return {"count": count}
 
 # RUN SERVER
 if __name__ == "__main__":

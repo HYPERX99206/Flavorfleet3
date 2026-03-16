@@ -2,80 +2,67 @@
 <html>
 
 <head>
+    <title>FlavorFleet</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>FlavorFleet</title>
-
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<link rel="stylesheet" href="/static/css/style.css">
-
-<!-- Added dashboard CSS -->
-<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 </head>
 
 <body>
 
+<!-- Floating Glass Cart -->
 <div class="floating-cart" id="floatingCart">
-
-<div class="cart-icon">
-🛒
-<span id="cartCount">0</span>
-</div>
-
-<a href="/cart" class="view-cart-btn">
-View Cart
-</a>
-
+    <div class="cart-icon">
+        🛒
+        <span id="cartCount">{{ session.get("cart", []) | length }}</span>
+    </div>
+    <a href="/cart" class="view-cart-btn">View Cart</a>
 </div>
 
 <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 
 <header class="navbar">
+    <div class="logo">🍔 FlavorFleet</div>
+    <button onclick="toggleTheme()">🌙 Theme</button>
 
-<div class="logo">🍔 FlavorFleet</div>
-<button onclick="toggleTheme()">🌙 Theme</button>
+    <nav>
+        <a href="/restaurants">Home</a>
+        <a href="/restaurants">Restaurants</a>
+        <a href="/cart">Cart</a>
+        <a href="/dashboard">Dashboard</a>
 
-<nav>
-
-<a href="/restaurants">Home</a>
-<a href="/restaurants">Restaurants</a>
-<a href="/cart">Cart</a>
-<a href="/dashboard">Dashboard</a>
-
-{% if session.get("user") %}
-
-<a href="/orders">Orders</a>
-<a href="/reminders">Reminders</a>
-<a href="/settings">Settings</a>
-<a href="/logout">Logout</a>
-
-{% else %}
-
-<a href="/login">Login</a>
-<a href="/register">Register</a>
-
-{% endif %}
-
-</nav>
-
+        {% if session.get("user") %}
+            <a href="/orders">Orders</a>
+            <a href="/reminders">Reminders</a>
+            <a href="/settings">Settings</a>
+            <a href="/logout">Logout</a>
+        {% else %}
+            <a href="/login">Login</a>
+            <a href="/register">Register</a>
+        {% endif %}
+    </nav>
 </header>
 
 <div class="container">
-
-{% block content %}{% endblock %}
-
+    {% block content %}{% endblock %}
 </div>
-
-<a href="/cart" class="cart-bubble">
-🛒
-<span class="cart-count">
-{{ session.get("cart", []) | length }}
-</span>
-</a>
 
 <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+
+<script>
+    // Update floating cart count dynamically
+    function updateCartCount() {
+        fetch('/cart_count')
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('cartCount').innerText = data.count;
+            });
+    }
+    // Call on page load
+    updateCartCount();
+</script>
 
 </body>
 </html>

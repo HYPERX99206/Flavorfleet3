@@ -2,24 +2,23 @@
 
 {% block content %}
 
-<h1>Edit Profile</h1>
+<div class="profile-container glass-card">
+    <h1>Edit Profile</h1>
+    <form method="POST" class="profile-form">
+        <label>First Name</label>
+        <input type="text" name="first_name" value="{{ user.first_name }}" required>
 
-<form method="POST">
+        <label>Last Name</label>
+        <input type="text" name="last_name" value="{{ user.last_name }}" required>
 
-<label>First Name</label>
-<input type="text" name="first_name" value="{{ user.first_name }}" required>
+        <label>Email</label>
+        <input type="email" name="email" value="{{ user.email }}" required>
 
-<label>Last Name</label>
-<input type="text" name="last_name" value="{{ user.last_name }}" required>
+        <label>Contact</label>
+        <input type="text" name="contact" value="{{ user.contact }}">
 
-<label>Email</label>
-<input type="email" name="email" value="{{ user.email }}" required>
-
-<label>Contact</label>
-<input type="text" name="contact" value="{{ user.contact }}">
-
-<button type="submit">Update Profile</button>
-
-</form>
+        <button type="submit" class="update-btn">Update Profile</button>
+    </form>
+</div>
 
 {% endblock %}
