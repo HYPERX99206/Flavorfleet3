@@ -3,11 +3,11 @@ import sqlite3
 from google.oauth2 import id_token
 from google.auth.transport import requests as grequests
 import os  # Added for Render PORT
-import razorpay
+import razorpay  # Razorpay integration
 
+# Razorpay credentials
 RAZORPAY_KEY_ID = "YOUR_KEY_ID"
 RAZORPAY_KEY_SECRET = "YOUR_KEY_SECRET"
-
 razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
 app = Flask(__name__)
@@ -31,16 +31,10 @@ def landing():
 def dashboard():
     if "user" not in session:
         return redirect("/login")
-
     conn = get_db()
     restaurants = conn.execute("SELECT * FROM restaurants").fetchall()
     conn.close()
-
-    return render_template(
-        "dashboard.html",
-        username=session["user"],
-        restaurants=restaurants
-    )
+    return render_template("dashboard.html", username=session["user"], restaurants=restaurants)
 
 # RESTAURANTS
 @app.route("/restaurants")
@@ -48,33 +42,17 @@ def restaurants():
     conn = get_db()
     restaurants = conn.execute("SELECT * FROM restaurants").fetchall()
     conn.close()
-
-    return render_template(
-        "restaurants.html",
-        restaurants=restaurants
-    )
+    return render_template("restaurants.html", restaurants=restaurants)
 
 # RESTAURANT MENU
 @app.route("/restaurant/<int:restaurant_id>")
 def restaurant_menu(restaurant_id):
     conn = get_db()
-    restaurant = conn.execute(
-        "SELECT * FROM restaurants WHERE id=?", (restaurant_id,)
-    ).fetchone()
-    items = conn.execute(
-        "SELECT * FROM menu_items WHERE restaurant_id=?", (restaurant_id,)
-    ).fetchall()
-    categories = conn.execute(
-        "SELECT DISTINCT category FROM menu_items WHERE restaurant_id=?", (restaurant_id,)
-    ).fetchall()
+    restaurant = conn.execute("SELECT * FROM restaurants WHERE id=?", (restaurant_id,)).fetchone()
+    items = conn.execute("SELECT * FROM menu_items WHERE restaurant_id=?", (restaurant_id,)).fetchall()
+    categories = conn.execute("SELECT DISTINCT category FROM menu_items WHERE restaurant_id=?", (restaurant_id,)).fetchall()
     conn.close()
-
-    return render_template(
-        "menu.html",
-        restaurant=restaurant,
-        items=items,
-        categories=categories
-    )
+    return render_template("menu.html", restaurant=restaurant, items=items, categories=categories)
 
 # ADD TO CART
 @app.route("/add_to_cart/<int:item_id>")
@@ -114,35 +92,25 @@ def remove_from_cart(item_id):
 # CHECKOUT
 @app.route("/checkout")
 def checkout():
-
     if "user" not in session:
         return redirect("/login")
-
     if "cart" not in session or len(session["cart"]) == 0:
         return "Your cart is empty"
-
     conn = get_db()
     total_amount = 0
     items = []
-
     for item_id in session["cart"]:
-        item = conn.execute(
-            "SELECT * FROM menu_items WHERE id=?",
-            (item_id,)
-        ).fetchone()
+        item = conn.execute("SELECT * FROM menu_items WHERE id=?", (item_id,)).fetchone()
         if item:
             items.append(item)
             total_amount += item["price"]
-
-    # Razorpay expects amount in paise
+    # Razorpay order creation (amount in paise)
     razorpay_order = razorpay_client.order.create({
         "amount": total_amount * 100,
         "currency": "INR",
         "payment_capture": "1"
     })
-
     conn.close()
-
     return render_template("checkout.html",
                            items=items,
                            total=total_amount,
@@ -154,140 +122,76 @@ def checkout():
 def orders():
     if "user" not in session:
         return redirect("/login")
-
     conn = get_db()
-    
-    # Fetch orders for the logged-in user
-    orders = conn.execute(
-        "SELECT * FROM orders WHERE user=? ORDER BY id DESC",
-        (session["user"],)
-    ).fetchall()
-
+    orders = conn.execute("SELECT * FROM orders WHERE user=? ORDER BY id DESC", (session["user"],)).fetchall()
     conn.close()
-
     return render_template("orders.html", orders=orders)
 
 # REMINDERS
 @app.route("/reminders", methods=["GET","POST"])
 def reminders():
-
     if "user" not in session:
         return redirect("/login")
-
     conn = get_db()
-
     if request.method == "POST":
         message = request.form["message"]
         remind_time = request.form["remind_time"]
-
-        conn.execute(
-            "INSERT INTO reminders (user, message, remind_time) VALUES (?,?,?)",
-            (session["user"], message, remind_time)
-        )
-
+        conn.execute("INSERT INTO reminders (user, message, remind_time) VALUES (?,?,?)",
+                     (session["user"], message, remind_time))
         conn.commit()
-
-    reminders = conn.execute(
-        "SELECT * FROM reminders WHERE user=?",
-        (session["user"],)
-    ).fetchall()
-
+    reminders = conn.execute("SELECT * FROM reminders WHERE user=?", (session["user"],)).fetchall()
     conn.close()
-
     return render_template("reminders.html", reminders=reminders)
+
 # SUBSCRIPTION
 @app.route("/subscription", methods=["GET","POST"])
 def subscription():
-
     if "user" not in session:
         return redirect("/login")
-
     conn = get_db()
-
-    sub = conn.execute(
-        "SELECT * FROM subscriptions WHERE user=?",
-        (session["user"],)
-    ).fetchone()
-
+    sub = conn.execute("SELECT * FROM subscriptions WHERE user=?", (session["user"],)).fetchone()
     if request.method == "POST":
         plan = request.form["plan"]
-
-        # If already exists, update instead of inserting duplicate
         if sub:
-            conn.execute(
-                "UPDATE subscriptions SET plan=?, status='Active', start_date=date('now') WHERE user=?",
-                (plan, session["user"])
-            )
+            conn.execute("UPDATE subscriptions SET plan=?, status='Active', start_date=date('now') WHERE user=?",
+                         (plan, session["user"]))
         else:
-            conn.execute(
-                "INSERT INTO subscriptions (user, plan, status, start_date) VALUES (?,?,?,date('now'))",
-                (session["user"], plan, "Active")
-            )
-
+            conn.execute("INSERT INTO subscriptions (user, plan, status, start_date) VALUES (?,?,?,date('now'))",
+                         (session["user"], plan, "Active"))
         conn.commit()
-
-    sub = conn.execute(
-        "SELECT * FROM subscriptions WHERE user=?",
-        (session["user"],)
-    ).fetchone()
-
+    sub = conn.execute("SELECT * FROM subscriptions WHERE user=?", (session["user"],)).fetchone()
     conn.close()
-
     return render_template("subscription.html", subscription=sub)
-
 
 @app.route("/cancel_subscription")
 def cancel_subscription():
-
     if "user" not in session:
         return redirect("/login")
-
     conn = get_db()
-
-    conn.execute(
-        "UPDATE subscriptions SET status='Cancelled' WHERE user=?",
-        (session["user"],)
-    )
-
+    conn.execute("UPDATE subscriptions SET status='Cancelled' WHERE user=?", (session["user"],))
     conn.commit()
     conn.close()
-
     return redirect("/subscription")
-
-
 
 # PROFILE
 @app.route("/profile", methods=["GET","POST"])
 def profile():
-
     if "user" not in session:
         return redirect("/login")
-
     conn = get_db()
-
-    user = conn.execute(
-        "SELECT * FROM users WHERE first_name=?",
-        (session["user"],)
-    ).fetchone()
-
+    user = conn.execute("SELECT * FROM users WHERE first_name=?", (session["user"],)).fetchone()
     if request.method == "POST":
-
         first = request.form["first_name"]
         last = request.form["last_name"]
         email = request.form["email"]
         contact = request.form["contact"]
-
-        conn.execute(
-            "UPDATE users SET first_name=?, last_name=?, email=?, contact=? WHERE first_name=?",
-            (first,last,email,contact,session["user"])
-        )
-
+        conn.execute("UPDATE users SET first_name=?, last_name=?, email=?, contact=? WHERE first_name=?",
+                     (first,last,email,contact,session["user"]))
         conn.commit()
         session["user"] = first
-
     conn.close()
-
     return render_template("profile.html", user=user)
+
 # LOGIN
 @app.route("/login", methods=["GET","POST"])
 def login():
@@ -295,9 +199,7 @@ def login():
         email = request.form.get("email")
         password = request.form.get("password")
         conn = get_db()
-        user = conn.execute(
-            "SELECT * FROM users WHERE email=? AND password=?", (email,password)
-        ).fetchone()
+        user = conn.execute("SELECT * FROM users WHERE email=? AND password=?", (email,password)).fetchone()
         conn.close()
         if user:
             session["user"] = user["first_name"]
@@ -323,10 +225,8 @@ def register():
         existing = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
         if existing:
             return "Email already registered"
-        conn.execute(
-            "INSERT INTO users(first_name,last_name,email,contact,password) VALUES(?,?,?,?,?)",
-            (first_name,last_name,email,contact,password)
-        )
+        conn.execute("INSERT INTO users(first_name,last_name,email,contact,password) VALUES(?,?,?,?,?)",
+                     (first_name,last_name,email,contact,password))
         conn.commit()
         conn.close()
         return redirect("/login")
@@ -347,10 +247,8 @@ def google_login():
         cur = conn.cursor()
         user = cur.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
         if not user:
-            cur.execute(
-                "INSERT INTO users (first_name,last_name,email,contact,password) VALUES (?,?,?,?,?)",
-                (first_name,last_name,email,"","google_account")
-            )
+            cur.execute("INSERT INTO users (first_name,last_name,email,contact,password) VALUES (?,?,?,?,?)",
+                        (first_name,last_name,email,"","google_account"))
             conn.commit()
         session["user"] = first_name
         return {"status":"success"}
@@ -369,34 +267,23 @@ def logout():
     session.clear()
     return redirect("/")
 
+# PAYMENT SUCCESS
 @app.route("/payment_success", methods=["POST"])
 def payment_success():
     data = request.json
-
     try:
-        # Verify payment signature
         razorpay_client.utility.verify_payment_signature(data)
-
-        # Store order in DB
         conn = get_db()
         total_amount = sum(
             conn.execute("SELECT price FROM menu_items WHERE id=?", (item_id,)).fetchone()["price"]
             for item_id in session["cart"]
         )
-
-        conn.execute(
-            "INSERT INTO orders(user,total_amount,status) VALUES(?,?,?)",
-            (session["user"], total_amount, "Paid")
-        )
-
+        conn.execute("INSERT INTO orders(user,total_amount,status) VALUES(?,?,?)",
+                     (session["user"], total_amount, "Paid"))
         conn.commit()
         conn.close()
-
-        # Clear cart
         session["cart"] = []
-
         return {"status": "success"}
-
     except Exception as e:
         print(e)
         return {"status": "error"}
@@ -408,6 +295,5 @@ def payment_done():
 
 # RUN SERVER
 if __name__ == "__main__":
-    # Use Render PORT and host 0.0.0.0
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
