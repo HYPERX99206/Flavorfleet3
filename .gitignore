@@ -1,0 +1,38 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+env/
+venv/
+ENV/
+
+# VS Code settings
+.vscode/
+
+# macOS files
+.DS_Store
+
+# Logs
+*.log
+
+# SQLite database (if you don’t want to push local DB)
+flavorfleet.db
+
+# Python egg info
+*.egg-info/
+*.egg
+
+# PyInstaller
+dist/
+build/
+
+# Coverage reports
+htmlcov/
+.coverage
+*.cover
+
+# Environment variables
+.env
