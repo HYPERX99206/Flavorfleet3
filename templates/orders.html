@@ -6,17 +6,15 @@
 
 {% if orders %}
 
-{% for o in orders %}
+    {% for o in orders %}
 
-<div class="order">
+    <div class="order-card">
+        <p><strong>Order ID:</strong> {{ o.id }}</p>
+        <p><strong>Total:</strong> ₹ {{ o.total_amount }}</p>
+        <p><strong>Status:</strong> {{ o.status }}</p>
+    </div>
 
-<p>Order ID : {{o.id}}</p>
-<p>Total : ₹ {{o.total_amount}}</p>
-<p>Status : {{o.status}}</p>
-
-</div>
-
-{% endfor %}
+    {% endfor %}
 
 {% else %}
 

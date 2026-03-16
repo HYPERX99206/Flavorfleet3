@@ -43,3 +43,11 @@ body{
     font-size:14px;
     color:#666;
 }
+
+.order-card {
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+}

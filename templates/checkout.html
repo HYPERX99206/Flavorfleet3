@@ -2,10 +2,63 @@
 
 {% block content %}
 
-<h1>Payment Successful 🎉</h1>
+<h1>Checkout</h1>
 
-<p>Total Paid : ₹ {{total}}</p>
+{% if items|length > 0 %}
+    <ul>
+    {% for item in items %}
+        <li>{{ item.name }} - ₹ {{ item.price }}</li>
+    {% endfor %}
+    </ul>
 
-<a href="/">Back to Restaurants</a>
+    <p>Total: ₹ {{ total }}</p>
+
+    <!-- Razorpay Button -->
+    <button id="rzp-button">Pay Now</button>
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script>
+    var options = {
+        "key": "{{ razorpay_key_id }}",
+        "amount": "{{ total*100 }}",  // Amount in paise
+        "currency": "INR",
+        "name": "FlavorFleet",
+        "description": "Order Payment",
+        "order_id": "{{ razorpay_order_id }}",
+        "handler": function (response){
+            fetch("/payment_success", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_signature: response.razorpay_signature
+                })
+            }).then(res => res.json())
+              .then(data => {
+                if(data.status === "success"){
+                    // Redirect to a success page with total
+                    window.location.href = "/payment_done?total={{ total }}";
+                } else {
+                    alert("Payment failed!");
+                }
+              });
+        },
+        "theme": {
+            "color": "#F37254"
+        }
+    };
+
+    var rzp1 = new Razorpay(options);
+
+    document.getElementById('rzp-button').onclick = function(e){
+        rzp1.open();
+        e.preventDefault();
+    }
+    </script>
+
+{% else %}
+    <p>Your cart is empty.</p>
+{% endif %}
 
 {% endblock %}

@@ -3,6 +3,12 @@ import sqlite3
 from google.oauth2 import id_token
 from google.auth.transport import requests as grequests
 import os  # Added for Render PORT
+import razorpay
+
+RAZORPAY_KEY_ID = "YOUR_KEY_ID"
+RAZORPAY_KEY_SECRET = "YOUR_KEY_SECRET"
+
+razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
 app = Flask(__name__)
 app.secret_key = "flavorfleet_secret"
@@ -108,15 +114,58 @@ def remove_from_cart(item_id):
 # CHECKOUT
 @app.route("/checkout")
 def checkout():
+
     if "user" not in session:
         return redirect("/login")
-    session["cart"] = []
-    return render_template("checkout.html")
+
+    if "cart" not in session or len(session["cart"]) == 0:
+        return "Your cart is empty"
+
+    conn = get_db()
+    total_amount = 0
+    items = []
+
+    for item_id in session["cart"]:
+        item = conn.execute(
+            "SELECT * FROM menu_items WHERE id=?",
+            (item_id,)
+        ).fetchone()
+        if item:
+            items.append(item)
+            total_amount += item["price"]
+
+    # Razorpay expects amount in paise
+    razorpay_order = razorpay_client.order.create({
+        "amount": total_amount * 100,
+        "currency": "INR",
+        "payment_capture": "1"
+    })
+
+    conn.close()
+
+    return render_template("checkout.html",
+                           items=items,
+                           total=total_amount,
+                           razorpay_order_id=razorpay_order["id"],
+                           razorpay_key_id=RAZORPAY_KEY_ID)
 
 # ORDERS
 @app.route("/orders")
 def orders():
-    return render_template("orders.html")
+    if "user" not in session:
+        return redirect("/login")
+
+    conn = get_db()
+    
+    # Fetch orders for the logged-in user
+    orders = conn.execute(
+        "SELECT * FROM orders WHERE user=? ORDER BY id DESC",
+        (session["user"],)
+    ).fetchall()
+
+    conn.close()
+
+    return render_template("orders.html", orders=orders)
 
 # REMINDERS
 @app.route("/reminders", methods=["GET","POST"])
@@ -319,6 +368,43 @@ def settings():
 def logout():
     session.clear()
     return redirect("/")
+
+@app.route("/payment_success", methods=["POST"])
+def payment_success():
+    data = request.json
+
+    try:
+        # Verify payment signature
+        razorpay_client.utility.verify_payment_signature(data)
+
+        # Store order in DB
+        conn = get_db()
+        total_amount = sum(
+            conn.execute("SELECT price FROM menu_items WHERE id=?", (item_id,)).fetchone()["price"]
+            for item_id in session["cart"]
+        )
+
+        conn.execute(
+            "INSERT INTO orders(user,total_amount,status) VALUES(?,?,?)",
+            (session["user"], total_amount, "Paid")
+        )
+
+        conn.commit()
+        conn.close()
+
+        # Clear cart
+        session["cart"] = []
+
+        return {"status": "success"}
+
+    except Exception as e:
+        print(e)
+        return {"status": "error"}
+
+@app.route("/payment_done")
+def payment_done():
+    total = request.args.get("total", 0)
+    return render_template("payment_success.html", total=total)
 
 # RUN SERVER
 if __name__ == "__main__":
