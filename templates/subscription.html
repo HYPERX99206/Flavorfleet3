@@ -1,5 +1,32 @@
 {% extends "base.html" %}
+
 {% block content %}
-<h1>Subscriptions</h1>
+
+<h1>Meal Subscriptions</h1>
+
+<form method="POST">
+
+<label>Select Plan</label>
+<select name="plan" required>
+    <option value="Weekly">Weekly</option>
+    <option value="Monthly">Monthly</option>
+</select>
+
+<button type="submit">Subscribe</button>
+
+</form>
+
+<h2>Your Current Subscription</h2>
+
+{% if subscription %}
+<div class="dash-card">
+    <p>Plan: {{ subscription.plan }}</p>
+    <p>Status: {{ subscription.status }}</p>
+    <p>Start Date: {{ subscription.start_date }}</p>
+    <a href="/cancel_subscription"><button>Cancel Subscription</button></a>
+</div>
+{% else %}
 <p>No subscriptions yet.</p>
+{% endif %}
+
 {% endblock %}

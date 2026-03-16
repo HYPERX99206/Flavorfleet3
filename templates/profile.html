@@ -2,20 +2,24 @@
 
 {% block content %}
 
-<h1>Profile</h1>
+<h1>Edit Profile</h1>
 
-<div class="profile-card">
+<form method="POST">
 
-<p><strong>Name:</strong> {{ session['user'] }}</p>
+<label>First Name</label>
+<input type="text" name="first_name" value="{{ user.first_name }}" required>
 
-<p><strong>Email:</strong> User email connected to account</p>
+<label>Last Name</label>
+<input type="text" name="last_name" value="{{ user.last_name }}" required>
 
-<p><strong>Contact:</strong> User phone number</p>
+<label>Email</label>
+<input type="email" name="email" value="{{ user.email }}" required>
 
-<a href="/settings">
-<button>Back to Settings</button>
-</a>
+<label>Contact</label>
+<input type="text" name="contact" value="{{ user.contact }}">
 
-</div>
+<button type="submit">Update Profile</button>
+
+</form>
 
 {% endblock %}
