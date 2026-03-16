@@ -145,7 +145,7 @@ def reminders():
 
     conn.close()
 
-    return render_template("reminders.html", reminders=reminders))
+    return render_template("reminders.html", reminders=reminders)
 # SUBSCRIPTION
 @app.route("/subscription", methods=["GET","POST"])
 def subscription():
