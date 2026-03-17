@@ -101,7 +101,7 @@ cur.execute("""ALTER TABLE restaurants ADD COLUMN available INTEGER DEFAULT 1;""
 cur.execute("""ALTER TABLE restaurants ADD COLUMN min_delivery_time INTEGER DEFAULT 20;""")
 cur.execute("""ALTER TABLE restaurants ADD COLUMN max_delivery_time INTEGER DEFAULT 40;""")
 cur.execute("""ALTER TABLE menu_items ADD COLUMN available INTEGER DEFAULT 1; """)
-
+cur.execute("""ALTER TABLE orders ADD COLUMN created_at TEXT;""")
 
 
 conn.commit()

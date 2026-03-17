@@ -60,15 +60,67 @@ def restaurant_menu(restaurant_id):
 # -----------------------------
 @app.route("/cart")
 def cart():
-    session.setdefault("cart", [])
     conn = get_db()
+    cart = session.get("cart", [])
+
     items = []
-    for item_id in session["cart"]:
-        item = conn.execute("SELECT * FROM menu_items WHERE id=?", (item_id,)).fetchone()
-        if item:
-            items.append(item)
+    total = 0
+
+    if cart:
+        placeholders = ",".join(["?"] * len(cart))
+        items = conn.execute(
+            f"SELECT * FROM menu_items WHERE id IN ({placeholders})",
+            cart
+        ).fetchall()
+
+        # ✅ EXISTING TOTAL (kept same)
+        total = sum(item["price"] for item in items)
+
+        # ==============================
+        # ✅ ADDED: Quantity Logic
+        # ==============================
+        from collections import Counter
+        cart_counts = Counter(cart)
+
+        items_with_qty = []
+        total = 0  # override safely for quantity-based total
+
+        for item in items:
+            qty = cart_counts[item["id"]]
+            item_dict = dict(item)
+            item_dict["quantity"] = qty
+            item_dict["subtotal"] = qty * item["price"]
+            items_with_qty.append(item_dict)
+            total += item_dict["subtotal"]
+
+        items = items_with_qty  # replace safely
+
+        # ==============================
+        # ✅ ADDED: Coupon Logic
+        # ==============================
+        discount = 0
+        coupon = request.args.get("coupon")
+
+        if coupon == "SAVE10":
+            discount = int(total * 0.1)
+
+        final_total = total - discount
+
+    else:
+        discount = 0
+        final_total = 0
+        coupon = None
+
     conn.close()
-    return render_template("cart.html", items=items)
+
+    return render_template(
+        "cart.html",
+        items=items,
+        total=total,
+        final_total=final_total,
+        discount=discount,
+        coupon=coupon
+    )
 
 @app.route("/add_to_cart/<int:item_id>")
 def add_to_cart(item_id):
@@ -418,14 +470,16 @@ def advance_payment_success():
 
     # Save order with scheduled delivery
     conn.execute("""
-        INSERT INTO orders (user, total_amount, status, delivery_time)
-        VALUES (?, ?, ?, ?)
+    INSERT INTO orders (user, total_amount, status, created_at)
+    VALUES (?, ?, ?, ?)
     """, (
-        session["user"],
-        order_data["total"],
-        "Scheduled",
-        order_data["delivery_time"]
+         session["user"],
+         total,
+         "Preparing",
+         datetime.now().isoformat()
     ))
+
+    order_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
     conn.commit()
     conn.close()
@@ -434,8 +488,52 @@ def advance_payment_success():
     session["cart"] = []
     session.pop("advance_order", None)
 
-    return jsonify({"status": "success"})
+    return jsonify({
+        "status": "success",
+        "order_id": order_id
+    })
 
+@app.route("/track_order/<int:order_id>")
+def track_order(order_id):
+    conn = get_db()
+
+    order = conn.execute(
+        "SELECT * FROM orders WHERE id=?",
+        (order_id,)
+    ).fetchone()
+
+    conn.close()
+
+    if not order:
+        return "Order not found"
+
+    created_time = datetime.fromisoformat(order["created_at"])
+    now = datetime.now()
+
+    elapsed = (now - created_time).total_seconds() / 60
+
+    if elapsed < 5:
+        status = "Preparing"
+        progress = 25
+    elif elapsed < 15:
+        status = "Cooking"
+        progress = 50
+    elif elapsed < 25:
+        status = "Out for Delivery"
+        progress = 75
+    else:
+        status = "Delivered"
+        progress = 100
+
+    eta = max(0, 30 - int(elapsed))
+
+    return render_template(
+        "track_order.html",
+        order=order,
+        status=status,
+        progress=progress,
+        eta=eta
+    )
 # -----------------------------
 # RUN SERVER
 # -----------------------------

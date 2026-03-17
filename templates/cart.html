@@ -11,6 +11,13 @@
         <div>
             <h3>{{ item.name }}</h3>
             <p>₹ {{ item.price }}</p>
+
+            <!-- ✅ ADDED: Quantity + Subtotal -->
+            <p>Quantity: {{ item.quantity }}</p>
+            <a href="/add_to_cart/{{ item.id }}">➕</a>
+            <a href="/remove_from_cart/{{ item.id }}">➖</a>
+            <p>Subtotal: ₹ {{ item.subtotal }}</p>
+
         </div>
         {% if not item.available %}
         <p style="color:red;">This item is no longer available</p>
@@ -19,6 +26,23 @@
         <a href="/remove_from_cart/{{ item.id }}" class="remove-btn">Remove</a>
     </div>
     {% endfor %}
+
+    <!-- ✅ ADDED: Coupon System -->
+    <form method="GET" action="/cart">
+        <input type="text" name="coupon" placeholder="Enter coupon code">
+        <button type="submit">Apply</button>
+    </form>
+
+    {% if coupon %}
+    <p>Coupon Applied: {{ coupon }}</p>
+    <p>Discount: ₹ {{ discount }}</p>
+    {% endif %}
+
+    <!-- ✅ EXISTING TOTAL (unchanged) -->
+    <h2>Total: ₹ {{ total }}</h2>
+
+    <!-- ✅ ADDED: Final Total -->
+    <h2>Final Total: ₹ {{ final_total }}</h2>
 
     {% if all_available %}
     <a href="/checkout" class="checkout-btn">Proceed to Checkout</a>

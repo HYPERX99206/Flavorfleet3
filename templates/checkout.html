@@ -40,7 +40,7 @@
             }).then(res => res.json())
               .then(data => {
                 if(data.status === "success"){
-                    window.location.href = "/orders";
+                    window.location.href = "/track_order/" + data.order_id;
                  } else {
                     alert("Payment failed!");
                  }

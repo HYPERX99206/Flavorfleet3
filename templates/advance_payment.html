@@ -28,7 +28,7 @@ var options = {
         .then(res => res.json())
         .then(data => {
             if(data.status === "success"){
-                window.location = "/orders";
+                window.location = "/track_order/" + data.order_id;
             } else {
                 alert("Payment failed");
             }
