@@ -506,15 +506,29 @@ def advance_booking():
 
         total = sum(item["price"] for item in items)
 
+        # ==============================
+        # ✅ ADDED DEBUG (no change)
+        # ==============================
+        print("TOTAL:", total)
+        print("KEY:", RAZORPAY_KEY_ID)
+        print("SECRET:", RAZORPAY_KEY_SECRET)
+
         # Create Razorpay order
         import razorpay
         client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
-        order = client.order.create({
-            "amount": int(total * 100),
-            "currency": "INR",
-            "payment_capture": 1
-        })
+        # ==============================
+        # ✅ FIX: SAFE RAZORPAY CALL
+        # ==============================
+        try:
+            order = client.order.create({
+                "amount": int(total * 100),
+                "currency": "INR",
+                "payment_capture": 1
+            })
+        except Exception as e:
+            print("RAZORPAY ERROR:", e)
+            return "Razorpay error. Check terminal."
 
         # Save temp booking in session
         session["advance_order"] = {
