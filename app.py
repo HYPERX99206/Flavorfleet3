@@ -538,8 +538,8 @@ def advance_payment_success():
     data = request.json
     order_data = session.get("advance_order")
 
-    if not order_data:
-        return jsonify({"status": "failed"})
+    if not order_data or "total" not in order_data:
+        return jsonify({"status": "failed", "msg": "Session expired"})
 
     conn = get_db()
 
