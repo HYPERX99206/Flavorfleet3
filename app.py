@@ -357,6 +357,85 @@ def settings():
         return redirect("/login")
     return render_template("settings.html")
 
+@app.route("/advance_booking", methods=["GET", "POST"])
+def advance_booking():
+    if "user" not in session:
+        return redirect("/login")
+
+    conn = get_db()
+
+    if request.method == "POST":
+        delivery_time = request.form.get("delivery_time")
+
+        cart = session.get("cart", [])
+        if not cart:
+            return redirect("/cart")
+
+        # Fetch cart items
+        placeholders = ",".join(["?"] * len(cart))
+        items = conn.execute(
+            f"SELECT * FROM menu_items WHERE id IN ({placeholders})", cart
+        ).fetchall()
+
+        total = sum(item["price"] for item in items)
+
+        # Create Razorpay order
+        import razorpay
+        client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+
+        order = client.order.create({
+            "amount": int(total * 100),
+            "currency": "INR",
+            "payment_capture": 1
+        })
+
+        # Save temp booking in session
+        session["advance_order"] = {
+            "items": cart,
+            "total": total,
+            "delivery_time": delivery_time,
+            "razorpay_order_id": order["id"]
+        }
+
+        return render_template(
+            "advance_payment.html",
+            total=total,
+            razorpay_key_id=RAZORPAY_KEY_ID,
+            razorpay_order_id=order["id"]
+        )
+
+    return render_template("advance_booking.html")
+
+@app.route("/advance_payment_success", methods=["POST"])
+def advance_payment_success():
+    data = request.json
+    order_data = session.get("advance_order")
+
+    if not order_data:
+        return jsonify({"status": "failed"})
+
+    conn = get_db()
+
+    # Save order with scheduled delivery
+    conn.execute("""
+        INSERT INTO orders (user, total_amount, status, delivery_time)
+        VALUES (?, ?, ?, ?)
+    """, (
+        session["user"],
+        order_data["total"],
+        "Scheduled",
+        order_data["delivery_time"]
+    ))
+
+    conn.commit()
+    conn.close()
+
+    # Clear cart
+    session["cart"] = []
+    session.pop("advance_order", None)
+
+    return jsonify({"status": "success"})
+
 # -----------------------------
 # RUN SERVER
 # -----------------------------

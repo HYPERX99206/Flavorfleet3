@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Advance Payment</h1>
+
+<p>Total: ₹ {{ total }}</p>
+
+<button id="rzp-button">Pay Now</button>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<script>
+var options = {
+    "key": "{{ razorpay_key_id }}",
+    "amount": "{{ total*100 }}",
+    "currency": "INR",
+    "name": "FlavorFleet",
+    "description": "Advance Order Payment",
+    "order_id": "{{ razorpay_order_id }}",
+    "handler": function (response){
+
+        fetch("/advance_payment_success", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(response)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === "success"){
+                window.location = "/orders";
+            } else {
+                alert("Payment failed");
+            }
+        });
+
+    }
+};
+
+var rzp1 = new Razorpay(options);
+document.getElementById('rzp-button').onclick = function(e){
+    rzp1.open();
+    e.preventDefault();
+}
+</script>
+
+{% endblock %}

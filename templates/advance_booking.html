@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Advance Booking</h1>
+
+<form method="POST">
+
+<label>Select Delivery Date & Time</label>
+<input type="datetime-local" name="delivery_time" required>
+
+<button type="submit">Proceed to Payment</button>
+
+</form>
+
+{% endblock %}
