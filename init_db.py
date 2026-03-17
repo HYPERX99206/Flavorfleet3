@@ -102,7 +102,14 @@ cur.execute("""ALTER TABLE restaurants ADD COLUMN min_delivery_time INTEGER DEFA
 cur.execute("""ALTER TABLE restaurants ADD COLUMN max_delivery_time INTEGER DEFAULT 40;""")
 cur.execute("""ALTER TABLE menu_items ADD COLUMN available INTEGER DEFAULT 1; """)
 cur.execute("""ALTER TABLE orders ADD COLUMN created_at TEXT;""")
-
+cur.execute("""CREATE TABLE IF NOT EXISTS order_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER,
+    item_id INTEGER,
+    name TEXT,
+    price REAL,
+    quantity INTEGER
+);""")
 
 conn.commit()
 

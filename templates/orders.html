@@ -10,10 +10,37 @@
         <p><strong>Order ID:</strong> {{ o.id }}</p>
         <p><strong>Total:</strong> ₹ {{ o.total_amount }}</p>
         <p><strong>Status:</strong> {{ o.status }}</p>
+
+        <!-- ✅ ADDED: ORDER ITEMS -->
+        {% if o.items %}
+        <div style="margin-top:10px;">
+            <strong>Items:</strong>
+            <ul>
+                {% for item in o.items %}
+                <li>
+                    {{ item.name }} x {{ item.quantity }} - ₹ {{ item.price }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- ✅ ADDED: TRACK ORDER BUTTON -->
+        <a href="/track_order/{{ o.id }}" class="track-btn">
+            Track Order
+        </a>
+
     </div>
     {% endfor %}
 {% else %}
 <p>No orders yet.</p>
 {% endif %}
+
+<!-- ✅ ADDED: AUTO REFRESH (LIVE STATUS UPDATE) -->
+<script>
+setInterval(() => {
+    location.reload();
+}, 10000); // refresh every 10 seconds
+</script>
 
 {% endblock %}

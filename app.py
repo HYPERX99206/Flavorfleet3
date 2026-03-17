@@ -6,6 +6,7 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as grequests
 from dotenv import load_dotenv
 from datetime import datetime
+from collections import Counter
 
 # Load environment variables
 load_dotenv()
@@ -230,9 +231,41 @@ def payment_success():
 
         # Insert order
         conn.execute(
-            "INSERT INTO orders(user_id,total_amount,status) VALUES(?,?,?)",
-            (session["user"], total_amount, "Paid")
+            "INSERT INTO orders(user_id,total_amount,status,created_at) VALUES(?,?,?,?)",
+            (session["user"], total_amount, "Paid", datetime.now().isoformat())
         )
+
+        # ==============================
+        # ✅ ADDED: GET ORDER ID
+        # ==============================
+        order_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+        # ==============================
+        # ✅ ADDED: STORE ORDER ITEMS
+        # ==============================
+        from collections import Counter
+
+        cart_counts = Counter(session.get("cart", []))
+
+        for item_id, qty in cart_counts.items():
+            item = conn.execute(
+                "SELECT * FROM menu_items WHERE id=?",
+                (item_id,)
+            ).fetchone()
+
+            if item:
+                conn.execute("""
+                INSERT INTO order_items
+                (order_id, item_id, name, price, quantity)
+                VALUES (?, ?, ?, ?, ?)
+                """, (
+                    order_id,
+                    item_id,
+                    item["name"],
+                    item["price"],
+                    qty
+                ))
+
         conn.commit()
         conn.close()
 
@@ -257,10 +290,52 @@ def dashboard():
 def orders():
     if "user" not in session:
         return redirect("/login")
+
     conn = get_db()
-    orders = conn.execute("SELECT * FROM orders WHERE user_id=? ORDER BY id DESC", (session["user"],)).fetchall()
+
+    orders = conn.execute(
+        "SELECT * FROM orders WHERE user_id=? ORDER BY id DESC",
+        (session["user"],)
+    ).fetchall()
+
+    orders_with_items = []
+
+    for order in orders:
+
+        # ✅ LIVE STATUS UPDATE
+        if order["created_at"]:
+            created = datetime.fromisoformat(order["created_at"])
+            elapsed = (datetime.now() - created).total_seconds() / 60
+
+            if elapsed > 25:
+                status = "Delivered"
+            elif elapsed > 15:
+                status = "Out for Delivery"
+            elif elapsed > 5:
+                status = "Cooking"
+            else:
+                status = "Preparing"
+
+            conn.execute(
+                "UPDATE orders SET status=? WHERE id=?",
+                (status, order["id"])
+            )
+
+        # ✅ FETCH ITEMS
+        items = conn.execute(
+            "SELECT * FROM order_items WHERE order_id=?",
+            (order["id"],)
+        ).fetchall()
+
+        order_dict = dict(order)
+        order_dict["items"] = items
+
+        orders_with_items.append(order_dict)
+
+    conn.commit()
     conn.close()
-    return render_template("orders.html", orders=orders)
+
+    return render_template("orders.html", orders=orders_with_items)
 
 @app.route("/profile", methods=["GET","POST"])
 def profile():
@@ -474,12 +549,38 @@ def advance_payment_success():
     VALUES (?, ?, ?, ?)
     """, (
          session["user"],
-         total,
+         order_data["total"],  # ✅ FIXED (was 'total')
          "Preparing",
          datetime.now().isoformat()
     ))
 
     order_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+    # ==============================
+    # ✅ ADDED: STORE ORDER ITEMS
+    # ==============================
+    from collections import Counter
+
+    cart_counts = Counter(order_data["items"])
+
+    for item_id, qty in cart_counts.items():
+        item = conn.execute(
+            "SELECT * FROM menu_items WHERE id=?",
+            (item_id,)
+        ).fetchone()
+
+        if item:
+            conn.execute("""
+            INSERT INTO order_items
+            (order_id, item_id, name, price, quantity)
+            VALUES (?, ?, ?, ?, ?)
+            """, (
+                order_id,
+                item_id,
+                item["name"],
+                item["price"],
+                qty
+            ))
 
     conn.commit()
     conn.close()
