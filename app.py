@@ -75,9 +75,13 @@ def add_to_cart(item_id):
     conn = get_db()
     item = conn.execute("SELECT * FROM menu_items WHERE id=?", (item_id,)).fetchone()
     conn.close()
+
     if item and item["available"]:
-        session.setdefault("cart", [])
-        session["cart"].append(item_id)
+        cart = session.get("cart", [])   # get cart properly
+        cart.append(item_id)             # modify list
+        session["cart"] = cart           # reassign (IMPORTANT)
+        session.modified = True          # 🔥 force save
+
     return redirect(request.referrer)
 
 @app.route("/remove_from_cart/<int:item_id>")
